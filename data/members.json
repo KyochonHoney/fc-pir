@@ -1,0 +1,85 @@
+{
+    "members": [
+        {
+            "id": 1,
+            "name": "김철수",
+            "position": "ATT",
+            "level": 8,
+            "is_active": true,
+            "created_at": "2025-10-27 14:00:00"
+        },
+        {
+            "id": 2,
+            "name": "이영희",
+            "position": "DEF",
+            "level": 7,
+            "is_active": true,
+            "created_at": "2025-10-27 14:00:00"
+        },
+        {
+            "id": 3,
+            "name": "박민수",
+            "position": "ALL",
+            "level": 9,
+            "is_active": true,
+            "created_at": "2025-10-27 14:00:00"
+        },
+        {
+            "id": 4,
+            "name": "정수진",
+            "position": "ATT",
+            "level": 6,
+            "is_active": true,
+            "created_at": "2025-10-27 14:00:00"
+        },
+        {
+            "id": 5,
+            "name": "최준호",
+            "position": "DEF",
+            "level": 8,
+            "is_active": true,
+            "created_at": "2025-10-27 14:00:00"
+        },
+        {
+            "id": 6,
+            "name": "강미영",
+            "position": "ALL",
+            "level": 7,
+            "is_active": true,
+            "created_at": "2025-10-27 14:00:00"
+        },
+        {
+            "id": 7,
+            "name": "임동혁",
+            "position": "ATT",
+            "level": 5,
+            "is_active": true,
+            "created_at": "2025-10-27 14:00:00"
+        },
+        {
+            "id": 8,
+            "name": "한지은",
+            "position": "DEF",
+            "level": 6,
+            "is_active": true,
+            "created_at": "2025-10-27 14:00:00"
+        },
+        {
+            "id": 9,
+            "name": "오세훈",
+            "position": "ALL",
+            "level": 8,
+            "is_active": true,
+            "created_at": "2025-10-27 14:00:00"
+        },
+        {
+            "id": 10,
+            "name": "윤하늘",
+            "position": "ATT",
+            "level": 7,
+            "is_active": true,
+            "created_at": "2025-10-27 14:00:00"
+        }
+    ],
+    "next_id": 11
+}
