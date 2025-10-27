@@ -1,0 +1,195 @@
+<!DOCTYPE html>
+<html lang="ko">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>회비 현황 - 풋살 팀 매칭</title>
+    <link rel="stylesheet" href="/assets/css/style.css">
+</head>
+<body>
+    <nav class="navbar">
+        <div class="container">
+            <a href="/" class="navbar-brand">⚽ 풋살 팀 매칭</a>
+            <div class="navbar-menu">
+                <a href="/">홈</a>
+                <a href="/team-generator.html">팀 편성</a>
+                <a href="/payment-status.html">회비 현황</a>
+                <a href="/admin/">관리자</a>
+            </div>
+        </div>
+    </nav>
+
+    <div class="container" style="margin-top: 30px;">
+        <div class="page-title">
+            <h2>📊 회비 납부 현황</h2>
+            <p>멤버들의 회비 납부 상태를 확인하세요</p>
+        </div>
+
+        <!-- 통계 -->
+        <div style="display: grid; grid-template-columns: repeat(auto-fit, minmax(200px, 1fr)); gap: 20px; margin-bottom: 30px;">
+            <div class="card text-center">
+                <h3 style="color: #17a2b8; font-size: 2.5rem;" id="paymentRate">0%</h3>
+                <p style="color: #666;">납부율</p>
+            </div>
+
+            <div class="card text-center">
+                <h3 style="color: #28a745; font-size: 2.5rem;" id="paidCount">0명</h3>
+                <p style="color: #666;">납부 완료</p>
+            </div>
+
+            <div class="card text-center">
+                <h3 style="color: #dc3545; font-size: 2.5rem;" id="unpaidCount">0명</h3>
+                <p style="color: #666;">미납</p>
+            </div>
+
+            <div class="card text-center">
+                <h3 style="color: #6c757d; font-size: 2.5rem;" id="totalMembers">0명</h3>
+                <p style="color: #666;">전체 멤버</p>
+            </div>
+        </div>
+
+        <div class="card">
+            <div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 20px;">
+                <h3 class="card-title">💰 회비 목록 (<span id="paymentCount">0</span>건)</h3>
+
+                <div>
+                    <button onclick="filterPayments('all')" class="btn btn-secondary" id="btnAll">전체</button>
+                    <button onclick="filterPayments('paid')" class="btn btn-success" id="btnPaid">납부</button>
+                    <button onclick="filterPayments('unpaid')" class="btn btn-danger" id="btnUnpaid">미납</button>
+                </div>
+            </div>
+
+            <div id="paymentList">
+                <!-- JavaScript로 동적 생성 -->
+            </div>
+        </div>
+    </div>
+
+    <footer style="background: #2c3e50; color: white; text-align: center; padding: 20px; margin-top: 50px;">
+        <p>&copy; 2025 풋살 팀 자동 매칭 시스템. All rights reserved.</p>
+    </footer>
+
+    <script src="/js/storage.js"></script>
+    <script>
+        let currentFilter = 'all';
+
+        // 통계 로드
+        function loadStatistics() {
+            const stats = storage.getPaymentStatistics();
+
+            document.getElementById('paymentRate').textContent = stats.payment_rate + '%';
+            document.getElementById('paidCount').textContent = stats.paid_count + '명';
+            document.getElementById('unpaidCount').textContent = stats.unpaid_count + '명';
+            document.getElementById('totalMembers').textContent = stats.total_members + '명';
+        }
+
+        // 회비 목록 로드
+        function loadPayments(filter = 'all') {
+            currentFilter = filter;
+
+            let payments;
+            if (filter === 'paid') {
+                payments = storage.getPayments(null, true);
+            } else if (filter === 'unpaid') {
+                payments = storage.getPayments(null, false);
+            } else {
+                payments = storage.getPayments();
+            }
+
+            const paymentList = document.getElementById('paymentList');
+            document.getElementById('paymentCount').textContent = payments.length;
+
+            if (payments.length === 0) {
+                paymentList.innerHTML = '<div style="text-align: center; padding: 40px; color: #999;">회비 기록이 없습니다.</div>';
+                return;
+            }
+
+            let html = `
+                <table class="table">
+                    <thead>
+                        <tr>
+                            <th>멤버명</th>
+                            <th>금액</th>
+                            <th>상태</th>
+                            <th>납부일</th>
+                            <th>비고</th>
+                        </tr>
+                    </thead>
+                    <tbody>
+            `;
+
+            payments.forEach(payment => {
+                const statusBadge = payment.paid
+                    ? '<span class="badge badge-success">납부 완료</span>'
+                    : '<span class="badge badge-danger">미납</span>';
+
+                html += `
+                    <tr>
+                        <td><strong>${escapeHtml(payment.member_name)}</strong></td>
+                        <td>${formatCurrency(payment.amount)}</td>
+                        <td>${statusBadge}</td>
+                        <td>${payment.payment_date || '-'}</td>
+                        <td>${escapeHtml(payment.note || '')}</td>
+                    </tr>
+                `;
+            });
+
+            html += `
+                    </tbody>
+                </table>
+            `;
+
+            paymentList.innerHTML = html;
+
+            // 버튼 활성화 상태 업데이트
+            updateFilterButtons();
+        }
+
+        // 필터 적용
+        function filterPayments(filter) {
+            loadPayments(filter);
+        }
+
+        // 필터 버튼 활성화 상태 업데이트
+        function updateFilterButtons() {
+            const buttons = {
+                'all': document.getElementById('btnAll'),
+                'paid': document.getElementById('btnPaid'),
+                'unpaid': document.getElementById('btnUnpaid')
+            };
+
+            Object.keys(buttons).forEach(key => {
+                if (key === currentFilter) {
+                    buttons[key].style.opacity = '1';
+                    buttons[key].style.fontWeight = 'bold';
+                } else {
+                    buttons[key].style.opacity = '0.6';
+                    buttons[key].style.fontWeight = 'normal';
+                }
+            });
+        }
+
+        // 금액 포맷
+        function formatCurrency(amount) {
+            return new Intl.NumberFormat('ko-KR', {
+                style: 'currency',
+                currency: 'KRW'
+            }).format(amount);
+        }
+
+        // HTML 이스케이프
+        function escapeHtml(text) {
+            if (!text) return '';
+            const div = document.createElement('div');
+            div.textContent = text;
+            return div.innerHTML;
+        }
+
+        // 페이지 로드 시 실행
+        document.addEventListener('DOMContentLoaded', function() {
+            loadStatistics();
+            loadPayments();
+        });
+    </script>
+</body>
+</html>

@@ -1,0 +1,9 @@
+# Netlify 리다이렉트 설정
+# 루트 접속 시 public/index.php로 리다이렉트
+/    /public/index.php    301
+
+# public 폴더 접속 시 public/index.php로 리다이렉트
+/public    /public/index.php    301
+
+# SPA fallback (모든 404를 index.php로)
+/*    /public/index.php    200

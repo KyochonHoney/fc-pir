@@ -1,0 +1,101 @@
+<!DOCTYPE html>
+<html lang="ko">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>관리자 로그인 - 풋살 팀 매칭</title>
+    <link rel="stylesheet" href="/assets/css/style.css">
+    <style>
+        .login-container {
+            max-width: 400px;
+            margin: 100px auto;
+            padding: 0 20px;
+        }
+        .login-card {
+            background: white;
+            padding: 40px;
+            border-radius: 8px;
+            box-shadow: 0 2px 10px rgba(0,0,0,0.1);
+        }
+        .login-title {
+            text-align: center;
+            margin-bottom: 30px;
+        }
+        .login-title h2 {
+            color: #2c3e50;
+            margin-bottom: 10px;
+        }
+    </style>
+</head>
+<body style="background: linear-gradient(135deg, #667eea 0%, #764ba2 100%); min-height: 100vh;">
+    <div class="login-container">
+        <div class="login-card">
+            <div class="login-title">
+                <h2>⚙️ 관리자 로그인</h2>
+                <p style="color: #666;">풋살 팀 매칭 시스템</p>
+            </div>
+
+            <form id="loginForm">
+                <div class="form-group">
+                    <label for="username">아이디</label>
+                    <input type="text" id="username" class="form-control" required autofocus>
+                </div>
+
+                <div class="form-group">
+                    <label for="password">비밀번호</label>
+                    <input type="password" id="password" class="form-control" required>
+                </div>
+
+                <div id="errorMessage" style="display: none; padding: 10px; margin-bottom: 15px; background: #f8d7da; color: #721c24; border-radius: 4px; font-size: 0.9rem;">
+                </div>
+
+                <button type="submit" class="btn btn-primary btn-block">로그인</button>
+
+                <div style="text-align: center; margin-top: 20px;">
+                    <a href="/" style="color: #667eea; text-decoration: none;">← 메인으로 돌아가기</a>
+                </div>
+            </form>
+
+            <div style="margin-top: 30px; padding-top: 20px; border-top: 1px solid #eee; text-align: center; color: #999; font-size: 0.9rem;">
+                <p><strong>기본 계정:</strong></p>
+                <p>아이디: admin</p>
+                <p>비밀번호: admin1234</p>
+            </div>
+        </div>
+    </div>
+
+    <script src="/js/storage.js"></script>
+    <script>
+        // 이미 로그인된 경우 대시보드로 리다이렉트
+        if (storage.isAdminLoggedIn()) {
+            window.location.href = '/admin/';
+        }
+
+        // 로그인 폼 제출
+        document.getElementById('loginForm').addEventListener('submit', function(e) {
+            e.preventDefault();
+
+            const username = document.getElementById('username').value;
+            const password = document.getElementById('password').value;
+            const errorMessage = document.getElementById('errorMessage');
+
+            // 로그인 시도
+            const result = storage.adminLogin(username, password);
+
+            if (result.success) {
+                // 로그인 성공
+                window.location.href = '/admin/';
+            } else {
+                // 로그인 실패
+                errorMessage.textContent = result.message;
+                errorMessage.style.display = 'block';
+
+                // 3초 후 오류 메시지 숨김
+                setTimeout(() => {
+                    errorMessage.style.display = 'none';
+                }, 3000);
+            }
+        });
+    </script>
+</body>
+</html>

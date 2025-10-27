@@ -1,0 +1,252 @@
+<!DOCTYPE html>
+<html lang="ko">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>팀 편성 - 풋살 팀 매칭</title>
+    <link rel="stylesheet" href="/assets/css/style.css">
+</head>
+<body>
+    <nav class="navbar">
+        <div class="container">
+            <a href="/" class="navbar-brand">⚽ 풋살 팀 매칭</a>
+            <div class="navbar-menu">
+                <a href="/">홈</a>
+                <a href="/team-generator.html">팀 편성</a>
+                <a href="/payment-status.html">회비 현황</a>
+                <a href="/admin/">관리자</a>
+            </div>
+        </div>
+    </nav>
+
+    <div class="container" style="margin-top: 30px;">
+        <div class="page-title">
+            <h2>⚽ 팀 편성</h2>
+            <p>참가할 멤버를 선택하고 공평한 팀을 자동으로 만들어보세요</p>
+        </div>
+
+        <div style="display: grid; grid-template-columns: 1fr 2fr; gap: 30px;">
+            <!-- 멤버 선택 -->
+            <div class="card">
+                <h3 class="card-title">👥 멤버 선택</h3>
+
+                <div id="memberList" style="max-height: 500px; overflow-y: auto;">
+                    <!-- JavaScript로 동적 생성 -->
+                </div>
+
+                <div style="margin-top: 20px; padding-top: 20px; border-top: 1px solid #ddd;">
+                    <p><strong>선택된 멤버:</strong> <span id="selectedCount">0</span>명</p>
+                    <button onclick="generateTeams()" class="btn btn-primary btn-block">팀 편성하기</button>
+                    <button onclick="selectAll()" class="btn btn-secondary btn-block" style="margin-top: 10px;">전체 선택</button>
+                    <button onclick="deselectAll()" class="btn btn-secondary btn-block" style="margin-top: 10px;">선택 해제</button>
+                </div>
+            </div>
+
+            <!-- 팀 편성 결과 -->
+            <div class="card">
+                <h3 class="card-title">📋 팀 편성 결과</h3>
+
+                <div id="teamResult" style="text-align: center; padding: 60px 20px; color: #999;">
+                    멤버를 선택하고 "팀 편성하기" 버튼을 클릭하세요
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <footer style="background: #2c3e50; color: white; text-align: center; padding: 20px; margin-top: 50px;">
+        <p>&copy; 2025 풋살 팀 자동 매칭 시스템. All rights reserved.</p>
+    </footer>
+
+    <script src="/js/storage.js"></script>
+    <script src="/js/team-algorithm.js"></script>
+    <script>
+        let selectedMembers = new Set();
+
+        // 멤버 목록 로드
+        function loadMembers() {
+            const members = storage.getMembers(true);
+            const memberList = document.getElementById('memberList');
+
+            if (members.length === 0) {
+                memberList.innerHTML = '<p style="text-align: center; color: #999; padding: 20px;">등록된 멤버가 없습니다.</p>';
+                return;
+            }
+
+            let html = '';
+            members.forEach(member => {
+                const positionName = getPositionName(member.position);
+                html += `
+                    <label style="display: flex; align-items: center; padding: 12px; border-bottom: 1px solid #eee; cursor: pointer;">
+                        <input type="checkbox" value="${member.id}" onchange="toggleMember(${member.id})" style="margin-right: 10px;">
+                        <div style="flex: 1;">
+                            <strong>${escapeHtml(member.name)}</strong>
+                            <div style="margin-top: 5px;">
+                                <span class="badge badge-info">${positionName}</span>
+                                <span class="badge badge-warning">Lv.${member.level}</span>
+                            </div>
+                        </div>
+                    </label>
+                `;
+            });
+
+            memberList.innerHTML = html;
+        }
+
+        // 멤버 선택 토글
+        function toggleMember(memberId) {
+            if (selectedMembers.has(memberId)) {
+                selectedMembers.delete(memberId);
+            } else {
+                selectedMembers.add(memberId);
+            }
+            updateSelectedCount();
+        }
+
+        // 선택된 멤버 수 업데이트
+        function updateSelectedCount() {
+            document.getElementById('selectedCount').textContent = selectedMembers.size;
+        }
+
+        // 전체 선택
+        function selectAll() {
+            const checkboxes = document.querySelectorAll('#memberList input[type="checkbox"]');
+            checkboxes.forEach(cb => {
+                cb.checked = true;
+                selectedMembers.add(parseInt(cb.value));
+            });
+            updateSelectedCount();
+        }
+
+        // 선택 해제
+        function deselectAll() {
+            const checkboxes = document.querySelectorAll('#memberList input[type="checkbox"]');
+            checkboxes.forEach(cb => {
+                cb.checked = false;
+            });
+            selectedMembers.clear();
+            updateSelectedCount();
+        }
+
+        // 팀 편성
+        function generateTeams() {
+            if (selectedMembers.size < 2) {
+                alert('최소 2명 이상의 멤버를 선택해주세요.');
+                return;
+            }
+
+            // 선택된 멤버 데이터 가져오기
+            const allMembers = storage.getMembers(true);
+            const members = allMembers.filter(m => selectedMembers.has(m.id));
+
+            // 팀 편성 알고리즘 실행
+            const result = TeamBalancer.generateBalancedTeams(members);
+
+            if (!result.success) {
+                alert(result.message);
+                return;
+            }
+
+            // 결과 표시
+            displayTeamResult(result);
+
+            // 기록 저장
+            storage.saveTeam({
+                match_date: new Date().toISOString().split('T')[0],
+                team_a_members: result.team_a.members.map(m => m.id),
+                team_b_members: result.team_b.members.map(m => m.id),
+                team_a_level: result.team_a.total_level,
+                team_b_level: result.team_b.total_level,
+                level_diff: parseFloat(result.level_diff)
+            });
+        }
+
+        // 팀 편성 결과 표시
+        function displayTeamResult(result) {
+            const qualityText = TeamBalancer.getBalanceQualityText(result.balance_quality);
+            const qualityColor = TeamBalancer.getBalanceQualityColor(result.balance_quality);
+
+            const html = `
+                <div style="margin-bottom: 30px;">
+                    <h4 style="color: ${qualityColor};">밸런스: ${qualityText} (레벨 차이: ${result.level_diff})</h4>
+                </div>
+
+                <div style="display: grid; grid-template-columns: 1fr 1fr; gap: 20px;">
+                    <!-- Team A -->
+                    <div class="team-card" style="background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);">
+                        <h3 style="color: white; margin-bottom: 20px;">Team A</h3>
+
+                        <div style="background: rgba(255,255,255,0.9); padding: 15px; border-radius: 8px; margin-bottom: 15px;">
+                            <p style="margin: 5px 0;"><strong>평균 레벨:</strong> ${result.team_a.avg_level}</p>
+                            <p style="margin: 5px 0;"><strong>총 레벨:</strong> ${result.team_a.total_level}</p>
+                            <p style="margin: 5px 0;">
+                                <strong>포지션:</strong>
+                                공격 ${result.team_a.position_att} |
+                                수비 ${result.team_a.position_def} |
+                                올라운더 ${result.team_a.position_all}
+                            </p>
+                        </div>
+
+                        <div style="background: rgba(255,255,255,0.9); padding: 15px; border-radius: 8px;">
+                            ${result.team_a.members.map(m => `
+                                <div style="padding: 8px; border-bottom: 1px solid #ddd;">
+                                    <strong>${escapeHtml(m.name)}</strong>
+                                    <span class="badge badge-info" style="margin-left: 10px;">${getPositionName(m.position)}</span>
+                                    <span class="badge badge-warning">Lv.${m.level}</span>
+                                </div>
+                            `).join('')}
+                        </div>
+                    </div>
+
+                    <!-- Team B -->
+                    <div class="team-card" style="background: linear-gradient(135deg, #f093fb 0%, #f5576c 100%);">
+                        <h3 style="color: white; margin-bottom: 20px;">Team B</h3>
+
+                        <div style="background: rgba(255,255,255,0.9); padding: 15px; border-radius: 8px; margin-bottom: 15px;">
+                            <p style="margin: 5px 0;"><strong>평균 레벨:</strong> ${result.team_b.avg_level}</p>
+                            <p style="margin: 5px 0;"><strong>총 레벨:</strong> ${result.team_b.total_level}</p>
+                            <p style="margin: 5px 0;">
+                                <strong>포지션:</strong>
+                                공격 ${result.team_b.position_att} |
+                                수비 ${result.team_b.position_def} |
+                                올라운더 ${result.team_b.position_all}
+                            </p>
+                        </div>
+
+                        <div style="background: rgba(255,255,255,0.9); padding: 15px; border-radius: 8px;">
+                            ${result.team_b.members.map(m => `
+                                <div style="padding: 8px; border-bottom: 1px solid #ddd;">
+                                    <strong>${escapeHtml(m.name)}</strong>
+                                    <span class="badge badge-info" style="margin-left: 10px;">${getPositionName(m.position)}</span>
+                                    <span class="badge badge-warning">Lv.${m.level}</span>
+                                </div>
+                            `).join('')}
+                        </div>
+                    </div>
+                </div>
+            `;
+
+            document.getElementById('teamResult').innerHTML = html;
+        }
+
+        // 포지션 이름 변환
+        function getPositionName(position) {
+            const names = {
+                'ATT': '공격',
+                'DEF': '수비',
+                'ALL': '올라운더'
+            };
+            return names[position] || position;
+        }
+
+        // HTML 이스케이프
+        function escapeHtml(text) {
+            const div = document.createElement('div');
+            div.textContent = text;
+            return div.innerHTML;
+        }
+
+        // 페이지 로드 시 실행
+        document.addEventListener('DOMContentLoaded', loadMembers);
+    </script>
+</body>
+</html>

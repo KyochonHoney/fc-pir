@@ -1,0 +1,30 @@
+[build]
+  # 빌드 명령어 (정적 사이트 - 빌드 불필요)
+  command = "echo 'Static site - no build needed'"
+
+  # 배포할 디렉토리
+  publish = "."
+
+[[redirects]]
+  # 루트 접속 시 index.html로 리다이렉트
+  from = "/"
+  to = "/index.html"
+  status = 200
+
+[[redirects]]
+  # /admin 접속 시 admin/index.html로
+  from = "/admin"
+  to = "/admin/index.html"
+  status = 200
+
+[[redirects]]
+  # /admin/ 접속 시 admin/index.html로
+  from = "/admin/"
+  to = "/admin/index.html"
+  status = 200
+
+[[redirects]]
+  # SPA fallback - 404를 index.html로
+  from = "/*"
+  to = "/index.html"
+  status = 200

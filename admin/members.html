@@ -1,0 +1,269 @@
+<!DOCTYPE html>
+<html lang="ko">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>멤버 관리 - 풋살 팀 매칭</title>
+    <link rel="stylesheet" href="/assets/css/style.css">
+</head>
+<body>
+    <nav class="navbar">
+        <div class="container">
+            <a href="/" class="navbar-brand">⚽ 풋살 팀 매칭</a>
+            <div class="navbar-menu">
+                <a href="/">홈</a>
+                <a href="/team-generator.html">팀 편성</a>
+                <a href="/payment-status.html">회비 현황</a>
+                <a href="/admin/">관리자</a>
+                <a href="#" onclick="logout()" style="color: #dc3545;">로그아웃</a>
+            </div>
+        </div>
+    </nav>
+
+    <div class="container" style="margin-top: 30px;">
+        <div class="page-title">
+            <h2>👥 멤버 관리</h2>
+            <p>풋살 팀 멤버를 추가, 수정, 삭제할 수 있습니다</p>
+        </div>
+
+        <div style="display: grid; grid-template-columns: 1fr 2fr; gap: 30px;">
+            <!-- 멤버 추가 폼 -->
+            <div class="card">
+                <h3 class="card-title">➕ 멤버 추가</h3>
+
+                <form id="addMemberForm">
+                    <div class="form-group">
+                        <label for="name">이름 *</label>
+                        <input type="text" id="name" class="form-control" required>
+                    </div>
+
+                    <div class="form-group">
+                        <label for="position">포지션 *</label>
+                        <select id="position" class="form-control" required>
+                            <option value="">선택하세요</option>
+                            <option value="ATT">공격 (ATT)</option>
+                            <option value="DEF">수비 (DEF)</option>
+                            <option value="ALL">올라운더 (ALL)</option>
+                        </select>
+                    </div>
+
+                    <div class="form-group">
+                        <label for="level">레벨 (1-10) *</label>
+                        <input type="number" id="level" class="form-control" min="1" max="10" required>
+                        <small style="color: #666;">1=초보, 10=프로급</small>
+                    </div>
+
+                    <button type="submit" class="btn btn-primary btn-block">추가</button>
+                </form>
+            </div>
+
+            <!-- 멤버 목록 -->
+            <div class="card">
+                <h3 class="card-title">📋 멤버 목록 (<span id="memberCount">0</span>명)</h3>
+
+                <div id="memberList">
+                    <!-- JavaScript로 동적 생성 -->
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <!-- 수정 모달 -->
+    <div id="editModal" style="display: none; position: fixed; top: 0; left: 0; right: 0; bottom: 0; background: rgba(0,0,0,0.5); z-index: 1000; justify-content: center; align-items: center;">
+        <div class="card" style="max-width: 500px; margin: 50px;">
+            <h3 class="card-title">✏️ 멤버 수정</h3>
+
+            <form id="editMemberForm">
+                <input type="hidden" id="edit-id">
+
+                <div class="form-group">
+                    <label for="edit-name">이름 *</label>
+                    <input type="text" id="edit-name" class="form-control" required>
+                </div>
+
+                <div class="form-group">
+                    <label for="edit-position">포지션 *</label>
+                    <select id="edit-position" class="form-control" required>
+                        <option value="ATT">공격 (ATT)</option>
+                        <option value="DEF">수비 (DEF)</option>
+                        <option value="ALL">올라운더 (ALL)</option>
+                    </select>
+                </div>
+
+                <div class="form-group">
+                    <label for="edit-level">레벨 (1-10) *</label>
+                    <input type="number" id="edit-level" class="form-control" min="1" max="10" required>
+                </div>
+
+                <div style="display: flex; gap: 10px;">
+                    <button type="submit" class="btn btn-primary" style="flex: 1;">저장</button>
+                    <button type="button" onclick="closeEditModal()" class="btn btn-secondary" style="flex: 1;">취소</button>
+                </div>
+            </form>
+        </div>
+    </div>
+
+    <footer style="background: #2c3e50; color: white; text-align: center; padding: 20px; margin-top: 50px;">
+        <p>&copy; 2025 풋살 팀 자동 매칭 시스템. All rights reserved.</p>
+    </footer>
+
+    <script src="/js/storage.js"></script>
+    <script>
+        // 관리자 인증 확인
+        if (!storage.isAdminLoggedIn()) {
+            alert('로그인이 필요합니다.');
+            window.location.href = '/admin/login.html';
+        }
+
+        // 멤버 목록 로드
+        function loadMembers() {
+            const members = storage.getMembers();
+            const memberList = document.getElementById('memberList');
+            document.getElementById('memberCount').textContent = members.length;
+
+            if (members.length === 0) {
+                memberList.innerHTML = '<div style="text-align: center; padding: 40px; color: #999;">등록된 멤버가 없습니다.</div>';
+                return;
+            }
+
+            let html = `
+                <table class="table">
+                    <thead>
+                        <tr>
+                            <th>이름</th>
+                            <th>포지션</th>
+                            <th>레벨</th>
+                            <th>상태</th>
+                            <th>가입일</th>
+                            <th>관리</th>
+                        </tr>
+                    </thead>
+                    <tbody>
+            `;
+
+            members.forEach(member => {
+                const statusBadge = member.is_active
+                    ? '<span class="badge badge-success">활성</span>'
+                    : '<span class="badge badge-danger">비활성</span>';
+
+                const positionBadge = getPositionBadge(member.position);
+                const createdDate = new Date(member.created_at).toLocaleDateString('ko-KR');
+
+                html += `
+                    <tr id="member-${member.id}">
+                        <td><strong>${escapeHtml(member.name)}</strong></td>
+                        <td>${positionBadge}</td>
+                        <td><span class="badge badge-warning">Lv.${member.level}</span></td>
+                        <td>${statusBadge}</td>
+                        <td>${createdDate}</td>
+                        <td>
+                            <button onclick='editMember(${JSON.stringify(member)})' class="btn btn-secondary" style="padding: 5px 10px; font-size: 0.9rem; margin-right: 5px;">수정</button>
+                            <button onclick="deleteMember(${member.id})" class="btn btn-danger" style="padding: 5px 10px; font-size: 0.9rem;">삭제</button>
+                        </td>
+                    </tr>
+                `;
+            });
+
+            html += `
+                    </tbody>
+                </table>
+            `;
+
+            memberList.innerHTML = html;
+        }
+
+        // 멤버 추가
+        document.getElementById('addMemberForm').addEventListener('submit', function(e) {
+            e.preventDefault();
+
+            const name = document.getElementById('name').value.trim();
+            const position = document.getElementById('position').value;
+            const level = parseInt(document.getElementById('level').value);
+
+            if (!name || !position || !level) {
+                alert('모든 필드를 입력해주세요.');
+                return;
+            }
+
+            storage.addMember(name, position, level);
+            alert('멤버가 추가되었습니다.');
+
+            // 폼 초기화
+            document.getElementById('addMemberForm').reset();
+
+            // 목록 새로고침
+            loadMembers();
+        });
+
+        // 멤버 수정 (모달 열기)
+        function editMember(member) {
+            document.getElementById('edit-id').value = member.id;
+            document.getElementById('edit-name').value = member.name;
+            document.getElementById('edit-position').value = member.position;
+            document.getElementById('edit-level').value = member.level;
+
+            document.getElementById('editModal').style.display = 'flex';
+        }
+
+        // 멤버 수정 (폼 제출)
+        document.getElementById('editMemberForm').addEventListener('submit', function(e) {
+            e.preventDefault();
+
+            const id = document.getElementById('edit-id').value;
+            const name = document.getElementById('edit-name').value.trim();
+            const position = document.getElementById('edit-position').value;
+            const level = parseInt(document.getElementById('edit-level').value);
+
+            storage.updateMember(id, name, position, level);
+            alert('멤버 정보가 수정되었습니다.');
+
+            closeEditModal();
+            loadMembers();
+        });
+
+        // 모달 닫기
+        function closeEditModal() {
+            document.getElementById('editModal').style.display = 'none';
+        }
+
+        // 멤버 삭제
+        function deleteMember(id) {
+            if (!confirm('정말 삭제하시겠습니까?')) {
+                return;
+            }
+
+            storage.deleteMember(id);
+            alert('멤버가 삭제되었습니다.');
+            loadMembers();
+        }
+
+        // 포지션 배지
+        function getPositionBadge(position) {
+            const names = {
+                'ATT': '공격',
+                'DEF': '수비',
+                'ALL': '올라운더'
+            };
+            return `<span class="badge badge-info">${names[position] || position}</span>`;
+        }
+
+        // HTML 이스케이프
+        function escapeHtml(text) {
+            const div = document.createElement('div');
+            div.textContent = text;
+            return div.innerHTML;
+        }
+
+        // 로그아웃
+        function logout() {
+            if (confirm('로그아웃하시겠습니까?')) {
+                storage.adminLogout();
+                window.location.href = '/admin/login.html';
+            }
+        }
+
+        // 페이지 로드 시 실행
+        document.addEventListener('DOMContentLoaded', loadMembers);
+    </script>
+</body>
+</html>

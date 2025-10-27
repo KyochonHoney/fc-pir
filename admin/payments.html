@@ -1,0 +1,255 @@
+<!DOCTYPE html>
+<html lang="ko">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>회비 관리 - 풋살 팀 매칭</title>
+    <link rel="stylesheet" href="/assets/css/style.css">
+</head>
+<body>
+    <nav class="navbar">
+        <div class="container">
+            <a href="/" class="navbar-brand">⚽ 풋살 팀 매칭</a>
+            <div class="navbar-menu">
+                <a href="/">홈</a>
+                <a href="/team-generator.html">팀 편성</a>
+                <a href="/payment-status.html">회비 현황</a>
+                <a href="/admin/">관리자</a>
+                <a href="#" onclick="logout()" style="color: #dc3545;">로그아웃</a>
+            </div>
+        </div>
+    </nav>
+
+    <div class="container" style="margin-top: 30px;">
+        <div class="page-title">
+            <h2>💰 회비 관리</h2>
+            <p>멤버들의 회비 납부 상태를 관리합니다</p>
+        </div>
+
+        <!-- 통계 -->
+        <div style="display: grid; grid-template-columns: repeat(auto-fit, minmax(200px, 1fr)); gap: 20px; margin-bottom: 30px;">
+            <div class="card text-center">
+                <h3 style="color: #17a2b8; font-size: 2.5rem;" id="paymentRate">0%</h3>
+                <p style="color: #666;">납부율</p>
+            </div>
+
+            <div class="card text-center">
+                <h3 style="color: #28a745; font-size: 2.5rem;" id="paidCount">0명</h3>
+                <p style="color: #666;">납부 완료</p>
+            </div>
+
+            <div class="card text-center">
+                <h3 style="color: #dc3545; font-size: 2.5rem;" id="unpaidCount">0명</h3>
+                <p style="color: #666;">미납</p>
+            </div>
+
+            <div class="card text-center">
+                <h3 style="color: #6c757d; font-size: 2.5rem;" id="totalMembers">0명</h3>
+                <p style="color: #666;">전체 멤버</p>
+            </div>
+        </div>
+
+        <div style="display: grid; grid-template-columns: 1fr 2fr; gap: 30px;">
+            <!-- 회비 추가 폼 -->
+            <div class="card">
+                <h3 class="card-title">➕ 회비 추가</h3>
+
+                <form id="addPaymentForm">
+                    <div class="form-group">
+                        <label for="member_id">멤버 선택 *</label>
+                        <select id="member_id" class="form-control" required>
+                            <option value="">선택하세요</option>
+                            <!-- JavaScript로 동적 생성 -->
+                        </select>
+                    </div>
+
+                    <div class="form-group">
+                        <label for="amount">회비 금액 *</label>
+                        <input type="number" id="amount" class="form-control" value="10000" required>
+                    </div>
+
+                    <div class="form-group">
+                        <label for="note">비고</label>
+                        <input type="text" id="note" class="form-control" placeholder="예: 10월 회비">
+                    </div>
+
+                    <button type="submit" class="btn btn-primary btn-block">추가</button>
+                </form>
+            </div>
+
+            <!-- 회비 목록 -->
+            <div class="card">
+                <h3 class="card-title">📋 회비 목록 (<span id="paymentCount">0</span>건)</h3>
+
+                <div id="paymentList">
+                    <!-- JavaScript로 동적 생성 -->
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <footer style="background: #2c3e50; color: white; text-align: center; padding: 20px; margin-top: 50px;">
+        <p>&copy; 2025 풋살 팀 자동 매칭 시스템. All rights reserved.</p>
+    </footer>
+
+    <script src="/js/storage.js"></script>
+    <script>
+        // 관리자 인증 확인
+        if (!storage.isAdminLoggedIn()) {
+            alert('로그인이 필요합니다.');
+            window.location.href = '/admin/login.html';
+        }
+
+        // 통계 로드
+        function loadStatistics() {
+            const stats = storage.getPaymentStatistics();
+
+            document.getElementById('paymentRate').textContent = stats.payment_rate + '%';
+            document.getElementById('paidCount').textContent = stats.paid_count + '명';
+            document.getElementById('unpaidCount').textContent = stats.unpaid_count + '명';
+            document.getElementById('totalMembers').textContent = stats.total_members + '명';
+        }
+
+        // 멤버 옵션 로드
+        function loadMemberOptions() {
+            const members = storage.getMembers(true);
+            const select = document.getElementById('member_id');
+
+            let html = '<option value="">선택하세요</option>';
+            members.forEach(member => {
+                html += `<option value="${member.id}">${escapeHtml(member.name)}</option>`;
+            });
+
+            select.innerHTML = html;
+        }
+
+        // 회비 목록 로드
+        function loadPayments() {
+            const payments = storage.getPayments();
+            const paymentList = document.getElementById('paymentList');
+            document.getElementById('paymentCount').textContent = payments.length;
+
+            if (payments.length === 0) {
+                paymentList.innerHTML = '<div style="text-align: center; padding: 40px; color: #999;">회비 기록이 없습니다.</div>';
+                return;
+            }
+
+            let html = `
+                <table class="table">
+                    <thead>
+                        <tr>
+                            <th>멤버명</th>
+                            <th>금액</th>
+                            <th>상태</th>
+                            <th>납부일</th>
+                            <th>비고</th>
+                            <th>관리</th>
+                        </tr>
+                    </thead>
+                    <tbody>
+            `;
+
+            payments.forEach(payment => {
+                const statusBadge = payment.paid
+                    ? '<span class="badge badge-success">납부 완료</span>'
+                    : '<span class="badge badge-danger">미납</span>';
+
+                const actionButton = payment.paid
+                    ? `<button onclick="togglePayment(${payment.id}, false)" class="btn btn-danger" style="padding: 5px 10px; font-size: 0.9rem;">미납 처리</button>`
+                    : `<button onclick="togglePayment(${payment.id}, true)" class="btn btn-success" style="padding: 5px 10px; font-size: 0.9rem; background: #28a745;">납부 처리</button>`;
+
+                html += `
+                    <tr>
+                        <td><strong>${escapeHtml(payment.member_name)}</strong></td>
+                        <td>${formatCurrency(payment.amount)}</td>
+                        <td>${statusBadge}</td>
+                        <td>${payment.payment_date || '-'}</td>
+                        <td>${escapeHtml(payment.note || '')}</td>
+                        <td>${actionButton}</td>
+                    </tr>
+                `;
+            });
+
+            html += `
+                    </tbody>
+                </table>
+            `;
+
+            paymentList.innerHTML = html;
+        }
+
+        // 회비 추가
+        document.getElementById('addPaymentForm').addEventListener('submit', function(e) {
+            e.preventDefault();
+
+            const memberId = parseInt(document.getElementById('member_id').value);
+            const amount = parseInt(document.getElementById('amount').value);
+            const note = document.getElementById('note').value.trim();
+
+            if (!memberId) {
+                alert('멤버를 선택해주세요.');
+                return;
+            }
+
+            storage.addPayment(memberId, amount, false, note);
+            alert('회비 기록이 추가되었습니다.');
+
+            // 폼 초기화 (멤버는 유지, 금액과 비고만 초기화)
+            document.getElementById('amount').value = 10000;
+            document.getElementById('note').value = '';
+
+            // 목록 새로고침
+            loadStatistics();
+            loadPayments();
+        });
+
+        // 회비 상태 토글
+        function togglePayment(id, paid) {
+            const message = paid ? '납부 처리하시겠습니까?' : '미납 처리하시겠습니까?';
+
+            if (!confirm(message)) {
+                return;
+            }
+
+            const paymentDate = paid ? new Date().toISOString().split('T')[0] : null;
+            storage.updatePayment(id, paid, paymentDate);
+
+            alert(paid ? '회비가 납부 처리되었습니다.' : '회비가 미납 처리되었습니다.');
+
+            loadStatistics();
+            loadPayments();
+        }
+
+        // 금액 포맷
+        function formatCurrency(amount) {
+            return new Intl.NumberFormat('ko-KR', {
+                style: 'currency',
+                currency: 'KRW'
+            }).format(amount);
+        }
+
+        // HTML 이스케이프
+        function escapeHtml(text) {
+            if (!text) return '';
+            const div = document.createElement('div');
+            div.textContent = text;
+            return div.innerHTML;
+        }
+
+        // 로그아웃
+        function logout() {
+            if (confirm('로그아웃하시겠습니까?')) {
+                storage.adminLogout();
+                window.location.href = '/admin/login.html';
+            }
+        }
+
+        // 페이지 로드 시 실행
+        document.addEventListener('DOMContentLoaded', function() {
+            loadStatistics();
+            loadMemberOptions();
+            loadPayments();
+        });
+    </script>
+</body>
+</html>
