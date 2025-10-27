@@ -5,7 +5,8 @@
       "Bash(php:*)",
       "Bash(tree:*)",
       "Bash(dir:*)",
-      "Read(//c/**)"
+      "Read(//c/**)",
+      "Bash(git add:*)"
     ],
     "deny": [],
     "ask": []

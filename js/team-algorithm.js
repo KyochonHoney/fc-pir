@@ -17,14 +17,21 @@ class TeamBalancer {
             };
         }
 
-        // 레벨 기준 내림차순 정렬
-        const sortedMembers = [...members].sort((a, b) => b.level - a.level);
+        // 포지션별로 멤버 그룹화
+        const attackers = members.filter(m => m.position === 'ATT');
+        const defenders = members.filter(m => m.position === 'DEF');
+        const allRounders = members.filter(m => m.position === 'ALL');
 
-        // Zigzag 방식으로 초기 분배
+        // 각 포지션 그룹을 레벨 내림차순 정렬
+        attackers.sort((a, b) => b.level - a.level);
+        defenders.sort((a, b) => b.level - a.level);
+        allRounders.sort((a, b) => b.level - a.level);
+
         const teamA = [];
         const teamB = [];
 
-        sortedMembers.forEach((member, index) => {
+        // 1. 공격수 지그재그 분배
+        attackers.forEach((member, index) => {
             if (index % 2 === 0) {
                 teamA.push(member);
             } else {
@@ -32,7 +39,25 @@ class TeamBalancer {
             }
         });
 
-        // Iterative balancing
+        // 2. 수비수 지그재그 분배
+        defenders.forEach((member, index) => {
+            if (index % 2 === 0) {
+                teamA.push(member);
+            } else {
+                teamB.push(member);
+            }
+        });
+
+        // 3. 올라운더 지그재그 분배
+        allRounders.forEach((member, index) => {
+            if (index % 2 === 0) {
+                teamA.push(member);
+            } else {
+                teamB.push(member);
+            }
+        });
+
+        // Iterative balancing (레벨 밸런스 개선)
         let improved = true;
         let iterations = 0;
         const maxIterations = 100;
@@ -45,9 +70,14 @@ class TeamBalancer {
                 this.calculateTeamLevel(teamA) - this.calculateTeamLevel(teamB)
             );
 
-            // 모든 가능한 스왑 시도
+            // 모든 가능한 스왑 시도 (같은 포지션끼리만 교환)
             for (let i = 0; i < teamA.length; i++) {
                 for (let j = 0; j < teamB.length; j++) {
+                    // 같은 포지션끼리만 교환
+                    if (teamA[i].position !== teamB[j].position) {
+                        continue;
+                    }
+
                     // 스왑 시뮬레이션
                     const newTeamA = [...teamA];
                     const newTeamB = [...teamB];
