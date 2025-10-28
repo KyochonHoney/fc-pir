@@ -96,8 +96,7 @@
 
         // 통계 로드
         async function loadStatistics() {
-            const members = await storage.getMembers(true);
-            const stats = storage.getPaymentStatistics();
+            const stats = await storage.getPaymentStatistics();
 
             document.getElementById('totalMembers').textContent = stats.total_members;
             document.getElementById('paymentRate').textContent = stats.payment_rate + '%';
@@ -120,9 +119,9 @@
         }
 
         // 페이지 로드 시 실행
-        document.addEventListener('DOMContentLoaded', function() {
-            loadStatistics();
-            updateAdminLink();
+        document.addEventListener('DOMContentLoaded', async function() {
+            await loadStatistics();
+            await updateAdminLink();
         });
     </script>
 </body>

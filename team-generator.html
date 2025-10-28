@@ -67,9 +67,11 @@
         <p>&copy; 2025 FC PIR. All rights reserved.</p>
     </footer>
 
-    <script src="/js/storage.js"></script>
     <script src="/js/team-algorithm.js"></script>
-    <script>
+    <script type="module">
+        import storage from '/js/storage-firebase.js';
+        window.storage = storage;
+
         let selectedMembers = new Set();
 
         // 멤버 목록 로드
@@ -138,7 +140,7 @@
         }
 
         // 팀 편성
-        function generateTeams() {
+        async function generateTeams() {
             if (selectedMembers.size < 2) {
                 alert('최소 2명 이상의 멤버를 선택해주세요.');
                 return;
