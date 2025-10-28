@@ -3,13 +3,13 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>팀 편성 - 풋살 팀 매칭</title>
+    <title>팀 편성 - FC PIR</title>
     <link rel="stylesheet" href="/assets/css/style.css">
 </head>
 <body>
     <nav class="navbar">
         <div class="container">
-            <a href="/" class="navbar-brand">⚽ 풋살 팀 매칭</a>
+            <a href="/" class="navbar-brand">⚽ FC PIR</a>
             <div class="navbar-menu">
                 <a href="/">홈</a>
                 <a href="/team-generator.html">팀 편성</a>
@@ -37,6 +37,15 @@
 
                 <div style="margin-top: 20px; padding-top: 20px; border-top: 1px solid #ddd;">
                     <p><strong>선택된 멤버:</strong> <span id="selectedCount">0</span>명</p>
+
+                    <div class="form-group" style="margin-top: 15px;">
+                        <label for="teamCount"><strong>팀 수 선택:</strong></label>
+                        <select id="teamCount" class="form-control">
+                            <option value="2">2팀</option>
+                            <option value="3">3팀</option>
+                        </select>
+                    </div>
+
                     <button onclick="generateTeams()" class="btn btn-primary btn-block">팀 편성하기</button>
                     <button onclick="selectAll()" class="btn btn-secondary btn-block" style="margin-top: 10px;">전체 선택</button>
                     <button onclick="deselectAll()" class="btn btn-secondary btn-block" style="margin-top: 10px;">선택 해제</button>
@@ -55,7 +64,7 @@
     </div>
 
     <footer style="background: #2c3e50; color: white; text-align: center; padding: 20px; margin-top: 50px;">
-        <p>&copy; 2025 풋살 팀 자동 매칭 시스템. All rights reserved.</p>
+        <p>&copy; 2025 FC PIR. All rights reserved.</p>
     </footer>
 
     <script src="/js/storage.js"></script>
@@ -135,12 +144,21 @@
                 return;
             }
 
+            // 사용자가 선택한 팀 수 가져오기
+            const teamCount = parseInt(document.getElementById('teamCount').value);
+
             // 선택된 멤버 데이터 가져오기
             const allMembers = storage.getMembers(true);
             const members = allMembers.filter(m => selectedMembers.has(m.id));
 
-            // 팀 편성 알고리즘 실행
-            const result = TeamBalancer.generateBalancedTeams(members);
+            // 최소 인원 체크
+            if (members.length < teamCount * 2) {
+                alert(`${teamCount}팀을 만들려면 최소 ${teamCount * 2}명이 필요합니다.`);
+                return;
+            }
+
+            // 팀 편성 알고리즘 실행 (사용자 선택 팀 수 전달)
+            const result = TeamBalancer.generateBalancedTeams(members, teamCount);
 
             if (!result.success) {
                 alert(result.message);
@@ -150,15 +168,19 @@
             // 결과 표시
             displayTeamResult(result);
 
-            // 기록 저장
-            storage.saveTeam({
+            // 기록 저장 (새 구조)
+            const teamRecord = {
                 match_date: new Date().toISOString().split('T')[0],
-                team_a_members: result.team_a.members.map(m => m.id),
-                team_b_members: result.team_b.members.map(m => m.id),
-                team_a_level: result.team_a.total_level,
-                team_b_level: result.team_b.total_level,
-                level_diff: parseFloat(result.level_diff)
-            });
+                team_count: result.team_count,
+                teams: result.teams.map(team => ({
+                    name: team.name,
+                    members: team.members.map(m => m.id),
+                    total_level: team.total_level
+                })),
+                level_diff: parseFloat(result.level_diff),
+                balance_quality: result.balance_quality
+            };
+            storage.saveTeam(teamRecord);
         }
 
         // 팀 편성 결과 표시
@@ -166,63 +188,47 @@
             const qualityText = TeamBalancer.getBalanceQualityText(result.balance_quality);
             const qualityColor = TeamBalancer.getBalanceQualityColor(result.balance_quality);
 
+            // 팀 수에 따라 그리드 컬럼 조정
+            const gridColumns = result.team_count === 2 ? '1fr 1fr' : '1fr 1fr 1fr';
+
+            // 팀 카드들 생성
+            const teamCards = result.teams.map(team => `
+                <div class="team-card" style="background: ${team.color};">
+                    <h3 style="color: white; margin-bottom: 20px;">${team.name}</h3>
+
+                    <div style="background: rgba(255,255,255,0.9); padding: 15px; border-radius: 8px; margin-bottom: 15px;">
+                        <p style="margin: 5px 0;"><strong>평균 레벨:</strong> ${team.avg_level}</p>
+                        <p style="margin: 5px 0;"><strong>총 레벨:</strong> ${team.total_level}</p>
+                        <p style="margin: 5px 0;"><strong>인원:</strong> ${team.member_count}명</p>
+                        <p style="margin: 5px 0;">
+                            <strong>포지션:</strong>
+                            공격 ${team.position_att} |
+                            수비 ${team.position_def} |
+                            올라운더 ${team.position_all}
+                        </p>
+                    </div>
+
+                    <div style="background: rgba(255,255,255,0.9); padding: 15px; border-radius: 8px;">
+                        ${team.members.map(m => `
+                            <div style="padding: 8px; border-bottom: 1px solid #ddd;">
+                                <strong>${escapeHtml(m.name)}</strong>
+                                <span class="badge badge-info" style="margin-left: 10px;">${getPositionName(m.position)}</span>
+                                <span class="badge badge-warning">Lv.${m.level}</span>
+                            </div>
+                        `).join('')}
+                    </div>
+                </div>
+            `).join('');
+
             const html = `
                 <div style="margin-bottom: 30px;">
-                    <h4 style="color: ${qualityColor};">밸런스: ${qualityText} (레벨 차이: ${result.level_diff})</h4>
+                    <h4 style="color: ${qualityColor};">
+                        ${result.team_count}팀 편성 | 밸런스: ${qualityText} (레벨 차이: ${result.level_diff})
+                    </h4>
                 </div>
 
-                <div style="display: grid; grid-template-columns: 1fr 1fr; gap: 20px;">
-                    <!-- Team A -->
-                    <div class="team-card" style="background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);">
-                        <h3 style="color: white; margin-bottom: 20px;">Team A</h3>
-
-                        <div style="background: rgba(255,255,255,0.9); padding: 15px; border-radius: 8px; margin-bottom: 15px;">
-                            <p style="margin: 5px 0;"><strong>평균 레벨:</strong> ${result.team_a.avg_level}</p>
-                            <p style="margin: 5px 0;"><strong>총 레벨:</strong> ${result.team_a.total_level}</p>
-                            <p style="margin: 5px 0;">
-                                <strong>포지션:</strong>
-                                공격 ${result.team_a.position_att} |
-                                수비 ${result.team_a.position_def} |
-                                올라운더 ${result.team_a.position_all}
-                            </p>
-                        </div>
-
-                        <div style="background: rgba(255,255,255,0.9); padding: 15px; border-radius: 8px;">
-                            ${result.team_a.members.map(m => `
-                                <div style="padding: 8px; border-bottom: 1px solid #ddd;">
-                                    <strong>${escapeHtml(m.name)}</strong>
-                                    <span class="badge badge-info" style="margin-left: 10px;">${getPositionName(m.position)}</span>
-                                    <span class="badge badge-warning">Lv.${m.level}</span>
-                                </div>
-                            `).join('')}
-                        </div>
-                    </div>
-
-                    <!-- Team B -->
-                    <div class="team-card" style="background: linear-gradient(135deg, #f093fb 0%, #f5576c 100%);">
-                        <h3 style="color: white; margin-bottom: 20px;">Team B</h3>
-
-                        <div style="background: rgba(255,255,255,0.9); padding: 15px; border-radius: 8px; margin-bottom: 15px;">
-                            <p style="margin: 5px 0;"><strong>평균 레벨:</strong> ${result.team_b.avg_level}</p>
-                            <p style="margin: 5px 0;"><strong>총 레벨:</strong> ${result.team_b.total_level}</p>
-                            <p style="margin: 5px 0;">
-                                <strong>포지션:</strong>
-                                공격 ${result.team_b.position_att} |
-                                수비 ${result.team_b.position_def} |
-                                올라운더 ${result.team_b.position_all}
-                            </p>
-                        </div>
-
-                        <div style="background: rgba(255,255,255,0.9); padding: 15px; border-radius: 8px;">
-                            ${result.team_b.members.map(m => `
-                                <div style="padding: 8px; border-bottom: 1px solid #ddd;">
-                                    <strong>${escapeHtml(m.name)}</strong>
-                                    <span class="badge badge-info" style="margin-left: 10px;">${getPositionName(m.position)}</span>
-                                    <span class="badge badge-warning">Lv.${m.level}</span>
-                                </div>
-                            `).join('')}
-                        </div>
-                    </div>
+                <div style="display: grid; grid-template-columns: ${gridColumns}; gap: 20px;">
+                    ${teamCards}
                 </div>
             `;
 

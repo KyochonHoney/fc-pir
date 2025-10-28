@@ -1,15 +1,16 @@
 /**
- * 팀 편성 알고리즘
- * JavaScript 버전
+ * 팀 편성 알고리즘 (완전 랜덤 + 자동 밸런스)
+ * 2팀 또는 3팀 자동 분배
  */
 
 class TeamBalancer {
     /**
-     * 팀 편성
+     * 팀 편성 (랜덤 + 밸런스)
      * @param {Array} members - 멤버 배열
+     * @param {Number} teamCount - 팀 수 (2 또는 3, 기본값 2)
      * @returns {Object} - 팀 편성 결과
      */
-    static generateBalancedTeams(members) {
+    static generateBalancedTeams(members, teamCount = 2) {
         if (!members || members.length < 2) {
             return {
                 success: false,
@@ -17,114 +18,74 @@ class TeamBalancer {
             };
         }
 
-        // 포지션별로 멤버 그룹화
-        const attackers = members.filter(m => m.position === 'ATT');
-        const defenders = members.filter(m => m.position === 'DEF');
-        const allRounders = members.filter(m => m.position === 'ALL');
+        // 팀 수 검증
+        if (![2, 3].includes(teamCount)) {
+            teamCount = 2; // 기본값
+        }
 
-        // 각 포지션 그룹을 레벨 내림차순 정렬
-        attackers.sort((a, b) => b.level - a.level);
-        defenders.sort((a, b) => b.level - a.level);
-        allRounders.sort((a, b) => b.level - a.level);
+        // 멤버 완전 랜덤 셔플
+        const shuffled = this.shuffleArray([...members]);
 
-        const teamA = [];
-        const teamB = [];
+        // 최적 밸런스 찾기 (여러 번 시도)
+        let bestResult = null;
+        let bestBalance = Infinity;
+        const attempts = 50; // 50번 시도
 
-        // 1. 공격수 지그재그 분배
-        attackers.forEach((member, index) => {
-            if (index % 2 === 0) {
-                teamA.push(member);
-            } else {
-                teamB.push(member);
-            }
-        });
+        for (let attempt = 0; attempt < attempts; attempt++) {
+            // 매번 새로 랜덤 셔플
+            const randomMembers = this.shuffleArray([...members]);
 
-        // 2. 수비수 지그재그 분배
-        defenders.forEach((member, index) => {
-            if (index % 2 === 0) {
-                teamA.push(member);
-            } else {
-                teamB.push(member);
-            }
-        });
+            // 팀 분배
+            const teams = this.distributeTeams(randomMembers, teamCount);
 
-        // 3. 올라운더 지그재그 분배
-        allRounders.forEach((member, index) => {
-            if (index % 2 === 0) {
-                teamA.push(member);
-            } else {
-                teamB.push(member);
-            }
-        });
+            // 밸런스 계산
+            const balance = this.calculateBalance(teams);
 
-        // Iterative balancing (레벨 밸런스 개선)
-        let improved = true;
-        let iterations = 0;
-        const maxIterations = 100;
-
-        while (improved && iterations < maxIterations) {
-            improved = false;
-            iterations++;
-
-            const levelDiffBefore = Math.abs(
-                this.calculateTeamLevel(teamA) - this.calculateTeamLevel(teamB)
-            );
-
-            // 모든 가능한 스왑 시도 (같은 포지션끼리만 교환)
-            for (let i = 0; i < teamA.length; i++) {
-                for (let j = 0; j < teamB.length; j++) {
-                    // 같은 포지션끼리만 교환
-                    if (teamA[i].position !== teamB[j].position) {
-                        continue;
-                    }
-
-                    // 스왑 시뮬레이션
-                    const newTeamA = [...teamA];
-                    const newTeamB = [...teamB];
-
-                    [newTeamA[i], newTeamB[j]] = [newTeamB[j], newTeamA[i]];
-
-                    const levelDiffAfter = Math.abs(
-                        this.calculateTeamLevel(newTeamA) - this.calculateTeamLevel(newTeamB)
-                    );
-
-                    // 개선되었으면 스왑 적용
-                    if (levelDiffAfter < levelDiffBefore) {
-                        [teamA[i], teamB[j]] = [teamB[j], teamA[i]];
-                        improved = true;
-                        break;
-                    }
-                }
-                if (improved) break;
+            // 더 좋은 밸런스를 찾으면 업데이트
+            if (balance < bestBalance) {
+                bestBalance = balance;
+                bestResult = teams;
             }
         }
 
-        // 최종 통계 계산
-        const teamALevel = this.calculateTeamLevel(teamA);
-        const teamBLevel = this.calculateTeamLevel(teamB);
-        const levelDiff = Math.abs(teamALevel - teamBLevel);
+        // 결과 포맷팅
+        return this.formatResult(bestResult, teamCount);
+    }
 
-        const teamAStats = this.calculateTeamStats(teamA);
-        const teamBStats = this.calculateTeamStats(teamB);
+    /**
+     * 배열 랜덤 셔플 (Fisher-Yates)
+     */
+    static shuffleArray(array) {
+        const shuffled = [...array];
+        for (let i = shuffled.length - 1; i > 0; i--) {
+            const j = Math.floor(Math.random() * (i + 1));
+            [shuffled[i], shuffled[j]] = [shuffled[j], shuffled[i]];
+        }
+        return shuffled;
+    }
 
-        return {
-            success: true,
-            team_a: {
-                members: teamA,
-                total_level: teamALevel,
-                avg_level: (teamALevel / teamA.length).toFixed(1),
-                ...teamAStats
-            },
-            team_b: {
-                members: teamB,
-                total_level: teamBLevel,
-                avg_level: (teamBLevel / teamB.length).toFixed(1),
-                ...teamBStats
-            },
-            level_diff: levelDiff.toFixed(1),
-            balance_quality: this.getBalanceQuality(levelDiff),
-            iterations: iterations
-        };
+    /**
+     * 팀 분배 (라운드 로빈 방식)
+     */
+    static distributeTeams(members, teamCount) {
+        const teams = Array.from({ length: teamCount }, () => []);
+
+        members.forEach((member, index) => {
+            teams[index % teamCount].push(member);
+        });
+
+        return teams;
+    }
+
+    /**
+     * 팀 간 밸런스 계산 (레벨 차이의 합)
+     */
+    static calculateBalance(teams) {
+        const levels = teams.map(team => this.calculateTeamLevel(team));
+        const avgLevel = levels.reduce((a, b) => a + b, 0) / levels.length;
+
+        // 각 팀의 평균과의 차이 합계
+        return levels.reduce((sum, level) => sum + Math.abs(level - avgLevel), 0);
     }
 
     /**
@@ -158,11 +119,49 @@ class TeamBalancer {
     }
 
     /**
+     * 결과 포맷팅
+     */
+    static formatResult(teams, teamCount) {
+        const result = {
+            success: true,
+            team_count: teamCount,
+            teams: []
+        };
+
+        const teamNames = ['A팀', 'B팀', 'C팀'];
+        const teamColors = ['#28a745', '#17a2b8', '#e83e8c'];
+
+        teams.forEach((team, index) => {
+            const teamLevel = this.calculateTeamLevel(team);
+            const teamStats = this.calculateTeamStats(team);
+
+            result.teams.push({
+                name: teamNames[index],
+                color: teamColors[index],
+                members: team,
+                total_level: teamLevel,
+                avg_level: (teamLevel / team.length).toFixed(1),
+                member_count: team.length,
+                ...teamStats
+            });
+        });
+
+        // 레벨 차이 계산
+        const levels = result.teams.map(t => t.total_level);
+        const maxLevel = Math.max(...levels);
+        const minLevel = Math.min(...levels);
+        result.level_diff = (maxLevel - minLevel).toFixed(1);
+        result.balance_quality = this.getBalanceQuality(maxLevel - minLevel);
+
+        return result;
+    }
+
+    /**
      * 밸런스 품질 평가
      */
     static getBalanceQuality(levelDiff) {
-        if (levelDiff <= 2) return 'excellent';
-        if (levelDiff <= 5) return 'good';
+        if (levelDiff <= 3) return 'excellent';
+        if (levelDiff <= 6) return 'good';
         if (levelDiff <= 10) return 'fair';
         return 'poor';
     }
