@@ -16,7 +16,7 @@
                 <a href="/payment-status.html">회비 현황</a>
                 <a href="/gallery.html">갤러리</a>
                 <a href="/admin/">관리자</a>
-                <a href="#" onclick="logout()" style="color: #dc3545;">로그아웃</a>
+                <a href="#" id="logoutBtn" style="color: #dc3545;">로그아웃</a>
             </div>
         </div>
     </nav>
@@ -108,22 +108,35 @@
         // Firebase 모듈 import
         import storage from '/js/storage-firebase.js';
 
-        // 전역 접근을 위해 window에 등록
-        window.storage = storage;
-
-        // 관리자 인증 확인
-        (async function() {
+        // 관리자 인증 확인 및 페이지 초기화
+        async function initializePage() {
             const loggedIn = await storage.isAdminLoggedIn();
             if (!loggedIn) {
                 alert('로그인이 필요합니다.');
                 window.location.href = '/admin/login.html';
+                return;
             }
-        })();
+
+            // 로그아웃 버튼 이벤트 리스너
+            document.getElementById('logoutBtn').addEventListener('click', async (e) => {
+                e.preventDefault();
+                if (confirm('로그아웃하시겠습니까?')) {
+                    await storage.adminLogout();
+                    window.location.href = '/admin/login.html';
+                }
+            });
+
+            // 데이터 로드
+            await Promise.all([
+                loadStatistics(),
+                loadAdminInfo(),
+                loadRecentTeams()
+            ]);
+        }
 
         // 통계 로드
         async function loadStatistics() {
             const stats = await storage.getPaymentStatistics();
-
             document.getElementById('totalMembers').textContent = stats.total_members;
             document.getElementById('paymentRate').textContent = stats.payment_rate + '%';
             document.getElementById('paidCount').textContent = stats.paid_count;
@@ -165,14 +178,14 @@
             `;
 
             teams.forEach(team => {
-                const diff = Math.abs(team.team_a_level - team.team_b_level);
+                const diff = Math.abs(team.teams[0].total_level - team.teams[1].total_level);
                 const badgeClass = diff <= 2 ? 'badge-success' : (diff <= 5 ? 'badge-warning' : 'badge-danger');
 
                 html += `
                     <tr>
                         <td>${team.match_date}</td>
-                        <td><span class="badge badge-info">${team.team_a_level}</span></td>
-                        <td><span class="badge badge-danger" style="background: #dc3545;">${team.team_b_level}</span></td>
+                        <td><span class="badge badge-info">${team.teams[0].total_level}</span></td>
+                        <td><span class="badge badge-danger" style="background: #dc3545;">${team.teams[1].total_level}</span></td>
                         <td><span class="badge ${badgeClass}">${diff.toFixed(1)}</span></td>
                         <td>${new Date(team.created_at).toLocaleString('ko-KR')}</td>
                     </tr>
@@ -187,20 +200,8 @@
             recentTeams.innerHTML = html;
         }
 
-        // 로그아웃
-        async function logout() {
-            if (confirm('로그아웃하시겠습니까?')) {
-                await storage.adminLogout();
-                window.location.href = '/admin/login.html';
-            }
-        }
-
         // 페이지 로드 시 실행
-        document.addEventListener('DOMContentLoaded', function() {
-            loadStatistics();
-            loadAdminInfo();
-            loadRecentTeams();
-        });
+        document.addEventListener('DOMContentLoaded', initializePage);
     </script>
 </body>
 </html>

@@ -195,10 +195,34 @@
 
     <script type="module">
         import storage from '/js/storage-firebase.js';
-        window.storage = storage;
 
-        // 갤러리 로드
-        async function loadGallery() {
+        const escapeHtml = (text) => {
+            if (!text) return '';
+            const div = document.createElement('div');
+            div.textContent = text;
+            return div.innerHTML;
+        };
+
+        const imageModal = document.getElementById('imageModal');
+        const modalImage = document.getElementById('modalImage');
+        const modalTitle = document.getElementById('modalTitle');
+        const modalDescription = document.getElementById('modalDescription');
+        const modalDate = document.getElementById('modalDate');
+
+        const openImageModal = (image) => {
+            if (!image) return;
+            modalImage.src = image.image_data;
+            modalTitle.textContent = image.title;
+            modalDescription.textContent = image.description || '';
+            modalDate.textContent = new Date(image.created_at).toLocaleString('ko-KR');
+            imageModal.classList.add('active');
+        };
+
+        const closeImageModal = () => {
+            imageModal.classList.remove('active');
+        };
+
+        async function initializePage() {
             const images = await storage.getGalleryImages();
             const container = document.getElementById('galleryContainer');
 
@@ -213,75 +237,36 @@
                 return;
             }
 
-            let html = '<div class="gallery-grid">';
-
-            images.forEach(image => {
-                const date = new Date(image.created_at).toLocaleDateString('ko-KR');
-
-                html += `
-                    <div class="gallery-item" onclick="openImageModal(${image.id})">
-                        <img src="${image.image_data}" alt="${escapeHtml(image.title)}" class="gallery-item-image">
-                        <div class="gallery-item-content">
-                            <div class="gallery-item-title">${escapeHtml(image.title)}</div>
-                            ${image.description ? `<div class="gallery-item-description">${escapeHtml(image.description)}</div>` : ''}
-                            <div class="gallery-item-date">${date}</div>
-                        </div>
+            container.innerHTML = `<div class="gallery-grid">${images.map(image => `
+                <div class="gallery-item" data-id="${image.id}">
+                    <img src="${image.image_data}" alt="${escapeHtml(image.title)}" class="gallery-item-image">
+                    <div class="gallery-item-content">
+                        <div class="gallery-item-title">${escapeHtml(image.title)}</div>
+                        ${image.description ? `<div class="gallery-item-description">${escapeHtml(image.description)}</div>` : ''}
+                        <div class="gallery-item-date">${new Date(image.created_at).toLocaleDateString('ko-KR')}</div>
                     </div>
-                `;
+                </div>
+            `).join('')}</div>`;
+
+            container.addEventListener('click', (e) => {
+                const item = e.target.closest('.gallery-item');
+                if (item) {
+                    const imageId = parseInt(item.dataset.id);
+                    const image = images.find(img => img.id === imageId);
+                    openImageModal(image);
+                }
             });
-
-            html += '</div>';
-            container.innerHTML = html;
         }
 
-        // 이미지 모달 열기
-        function openImageModal(imageId) {
-            const image = storage.getGalleryImage(imageId);
-
-            if (!image) {
-                alert('이미지를 찾을 수 없습니다.');
-                return;
-            }
-
-            document.getElementById('modalImage').src = image.image_data;
-            document.getElementById('modalTitle').textContent = image.title;
-            document.getElementById('modalDescription').textContent = image.description || '';
-            document.getElementById('modalDate').textContent = new Date(image.created_at).toLocaleString('ko-KR');
-
-            document.getElementById('imageModal').classList.add('active');
-        }
-
-        // 이미지 모달 닫기
-        function closeImageModal() {
-            document.getElementById('imageModal').classList.remove('active');
-        }
-
-        // HTML 이스케이프
-        function escapeHtml(text) {
-            if (!text) return '';
-            const div = document.createElement('div');
-            div.textContent = text;
-            return div.innerHTML;
-        }
-
-        // 모달 외부 클릭 시 닫기
-        document.getElementById('imageModal').addEventListener('click', async function(e) {
-            if (e.target === this) {
-                closeImageModal();
-            }
+        document.querySelector('.modal-close').addEventListener('click', closeImageModal);
+        imageModal.addEventListener('click', (e) => {
+            if (e.target === imageModal) closeImageModal();
+        });
+        document.addEventListener('keydown', (e) => {
+            if (e.key === 'Escape') closeImageModal();
         });
 
-        // ESC 키로 모달 닫기
-        document.addEventListener('keydown', function(e) {
-            if (e.key === 'Escape') {
-                closeImageModal();
-            }
-        });
-
-        // 페이지 로드 시 실행
-        document.addEventListener('DOMContentLoaded', function() {
-            loadGallery();
-        });
+        document.addEventListener('DOMContentLoaded', initializePage);
     </script>
 </body>
 </html>
