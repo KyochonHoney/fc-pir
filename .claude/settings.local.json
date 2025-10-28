@@ -7,7 +7,8 @@
       "Bash(dir:*)",
       "Read(//c/**)",
       "Bash(git add:*)",
-      "Bash(start http://localhost/football/admin/payments.html)"
+      "Bash(start http://localhost/football/admin/payments.html)",
+      "Bash(find:*)"
     ],
     "deny": [],
     "ask": []
