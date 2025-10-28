@@ -124,7 +124,9 @@
             allMembers = await storage.getMembers();
             renderMembers();
 
-            // 이벤트 리스너 등록
+            // --- 이벤트 리스너 등록 --- //
+
+            // 로그아웃
             document.getElementById('logoutBtn').addEventListener('click', async (e) => {
                 e.preventDefault();
                 if (confirm('로그아웃하시겠습니까?')) {
@@ -133,6 +135,7 @@
                 }
             });
 
+            // 멤버 추가 폼
             document.getElementById('addMemberForm').addEventListener('submit', async (e) => {
                 e.preventDefault();
                 const name = document.getElementById('name').value.trim();
@@ -147,16 +150,21 @@
                 renderMembers();
             });
 
+            // 멤버 목록 (수정/삭제) 이벤트 위임
             document.getElementById('memberList').addEventListener('click', async (e) => {
-                const memberId = e.target.dataset.id;
+                const target = e.target;
+                const memberId = target.dataset.id;
+
                 if (!memberId) return;
 
-                if (e.target.classList.contains('btn-edit')) {
+                // 수정 버튼 클릭
+                if (target.classList.contains('btn-edit')) {
                     const memberToEdit = allMembers.find(m => m.id === parseInt(memberId));
                     if (memberToEdit) openEditModal(memberToEdit);
                 }
 
-                if (e.target.classList.contains('btn-delete')) {
+                // 삭제 버튼 클릭
+                if (target.classList.contains('btn-delete')) {
                     if (!confirm('정말 삭제하시겠습니까?')) return;
                     await storage.deleteMember(memberId);
                     alert('멤버가 삭제되었습니다.');
@@ -165,6 +173,7 @@
                 }
             });
 
+            // 수정 모달 폼
             document.getElementById('editMemberForm').addEventListener('submit', async (e) => {
                 e.preventDefault();
                 const id = document.getElementById('edit-id').value;
@@ -179,6 +188,7 @@
                 renderMembers();
             });
 
+            // 수정 모달 취소 버튼
             document.getElementById('cancelEditBtn').addEventListener('click', closeEditModal);
         }
 
