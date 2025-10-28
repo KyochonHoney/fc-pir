@@ -226,7 +226,7 @@
                         <div style="text-align: center;">
                             <div style="font-size: 3rem; margin-bottom: 10px;">📁</div>
                             <div style="font-size: 1.1rem; color: #667eea;">클릭하여 이미지 선택</div>
-                            <div style="font-size: 0.9rem; color: #999; margin-top: 5px;">JPG, PNG, GIF (최대 5MB 권장)</div>
+                            <div style="font-size: 0.9rem; color: #999; margin-top: 5px;">JPG, PNG, GIF 지원</div>
                         </div>
                     </label>
                 </div>
@@ -293,12 +293,7 @@
                 return;
             }
 
-            // 파일 크기 체크 (10MB)
-            if (file.size > 10 * 1024 * 1024) {
-                alert('파일 크기는 10MB 이하여야 합니다.');
-                this.value = '';
-                return;
-            }
+            // 파일 크기 체크 제거 (LocalStorage 한도까지 허용)
 
             // 이미지 미리보기
             const reader = new FileReader();
@@ -347,7 +342,7 @@
                 <div style="text-align: center;">
                     <div style="font-size: 3rem; margin-bottom: 10px;">📁</div>
                     <div style="font-size: 1.1rem; color: #667eea;">클릭하여 이미지 선택</div>
-                    <div style="font-size: 0.9rem; color: #999; margin-top: 5px;">JPG, PNG, GIF (최대 5MB 권장)</div>
+                    <div style="font-size: 0.9rem; color: #999; margin-top: 5px;">JPG, PNG, GIF 지원</div>
                 </div>
             `;
             selectedImageData = null;

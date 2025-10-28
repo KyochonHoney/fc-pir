@@ -46,11 +46,11 @@ class Storage {
 
         const currentYear = new Date().getFullYear();
         const samplePayments = [
-            { id: 1, member_id: 1, year: currentYear, month: 1, amount: 10000, paid: true, payment_date: `${currentYear}-01-15`, note: '1월 회비', created_at: new Date().toISOString() },
-            { id: 2, member_id: 1, year: currentYear, month: 2, amount: 10000, paid: true, payment_date: `${currentYear}-02-10`, note: '2월 회비', created_at: new Date().toISOString() },
-            { id: 3, member_id: 2, year: currentYear, month: 1, amount: 10000, paid: true, payment_date: `${currentYear}-01-20`, note: '1월 회비', created_at: new Date().toISOString() },
-            { id: 4, member_id: 3, year: currentYear, month: 1, amount: 10000, paid: false, payment_date: null, note: '1월 회비', created_at: new Date().toISOString() },
-            { id: 5, member_id: 3, year: currentYear, month: 2, amount: 10000, paid: true, payment_date: `${currentYear}-02-05`, note: '2월 회비', created_at: new Date().toISOString() }
+            { id: 1, member_id: 1, year: currentYear, month: 1, amount: 50000, paid: true, payment_date: `${currentYear}-01-15`, note: '1월 회비 (입회비 포함)', created_at: new Date().toISOString() },
+            { id: 2, member_id: 1, year: currentYear, month: 2, amount: 35000, paid: true, payment_date: `${currentYear}-02-10`, note: '2월 회비', created_at: new Date().toISOString() },
+            { id: 3, member_id: 2, year: currentYear, month: 1, amount: 50000, paid: true, payment_date: `${currentYear}-01-20`, note: '1월 회비 (입회비 포함)', created_at: new Date().toISOString() },
+            { id: 4, member_id: 3, year: currentYear, month: 1, amount: 50000, paid: false, payment_date: null, note: '1월 회비 (입회비 포함)', created_at: new Date().toISOString() },
+            { id: 5, member_id: 3, year: currentYear, month: 2, amount: 35000, paid: true, payment_date: `${currentYear}-02-05`, note: '2월 회비', created_at: new Date().toISOString() }
         ];
 
         this.setData(this.STORAGE_KEYS.members, sampleMembers);
