@@ -10,7 +10,8 @@ class Storage {
             payments: 'football_payments',
             teams: 'football_teams',
             attendances: 'football_attendances',
-            admin: 'football_admin'
+            admin: 'football_admin',
+            gallery: 'football_gallery'
         };
 
         // 초기 데이터가 없으면 샘플 데이터 로드
@@ -43,12 +44,13 @@ class Storage {
             { id: 10, name: '신유진', position: 'ATT', level: 7, is_active: true, created_at: new Date().toISOString() }
         ];
 
+        const currentYear = new Date().getFullYear();
         const samplePayments = [
-            { id: 1, member_id: 1, amount: 10000, paid: true, payment_date: '2025-10-01', note: '10월 회비', created_at: new Date().toISOString() },
-            { id: 2, member_id: 2, amount: 10000, paid: true, payment_date: '2025-10-02', note: '10월 회비', created_at: new Date().toISOString() },
-            { id: 3, member_id: 3, amount: 10000, paid: false, payment_date: null, note: '10월 회비', created_at: new Date().toISOString() },
-            { id: 4, member_id: 4, amount: 10000, paid: true, payment_date: '2025-10-03', note: '10월 회비', created_at: new Date().toISOString() },
-            { id: 5, member_id: 5, amount: 10000, paid: false, payment_date: null, note: '10월 회비', created_at: new Date().toISOString() }
+            { id: 1, member_id: 1, year: currentYear, month: 1, amount: 10000, paid: true, payment_date: `${currentYear}-01-15`, note: '1월 회비', created_at: new Date().toISOString() },
+            { id: 2, member_id: 1, year: currentYear, month: 2, amount: 10000, paid: true, payment_date: `${currentYear}-02-10`, note: '2월 회비', created_at: new Date().toISOString() },
+            { id: 3, member_id: 2, year: currentYear, month: 1, amount: 10000, paid: true, payment_date: `${currentYear}-01-20`, note: '1월 회비', created_at: new Date().toISOString() },
+            { id: 4, member_id: 3, year: currentYear, month: 1, amount: 10000, paid: false, payment_date: null, note: '1월 회비', created_at: new Date().toISOString() },
+            { id: 5, member_id: 3, year: currentYear, month: 2, amount: 10000, paid: true, payment_date: `${currentYear}-02-05`, note: '2월 회비', created_at: new Date().toISOString() }
         ];
 
         this.setData(this.STORAGE_KEYS.members, sampleMembers);
@@ -160,7 +162,7 @@ class Storage {
     /**
      * 모든 회비 가져오기
      */
-    getPayments(memberId = null, paidStatus = null) {
+    getPayments(memberId = null, paidStatus = null, year = null, month = null) {
         let payments = this.getData(this.STORAGE_KEYS.payments);
 
         if (memberId !== null) {
@@ -169,6 +171,14 @@ class Storage {
 
         if (paidStatus !== null) {
             payments = payments.filter(p => p.paid === paidStatus);
+        }
+
+        if (year !== null) {
+            payments = payments.filter(p => p.year === parseInt(year));
+        }
+
+        if (month !== null) {
+            payments = payments.filter(p => p.month === parseInt(month));
         }
 
         // 멤버 이름 추가
@@ -185,13 +195,27 @@ class Storage {
     /**
      * 회비 추가
      */
-    addPayment(memberId, amount, paid = false, note = '') {
+    addPayment(memberId, year, month, amount, paid = false, note = '') {
         const payments = this.getData(this.STORAGE_KEYS.payments);
+
+        // 중복 체크 (같은 회원, 같은 년월의 회비가 이미 있는지)
+        const existing = payments.find(p =>
+            p.member_id === parseInt(memberId) &&
+            p.year === parseInt(year) &&
+            p.month === parseInt(month)
+        );
+
+        if (existing) {
+            return { error: '해당 회원의 해당 월 회비가 이미 존재합니다.' };
+        }
+
         const newId = payments.length > 0 ? Math.max(...payments.map(p => p.id)) + 1 : 1;
 
         const newPayment = {
             id: newId,
             member_id: parseInt(memberId),
+            year: parseInt(year),
+            month: parseInt(month),
             amount: parseInt(amount),
             paid: paid,
             payment_date: paid ? new Date().toISOString().split('T')[0] : null,
@@ -207,17 +231,60 @@ class Storage {
     /**
      * 회비 상태 업데이트
      */
-    updatePayment(id, paid, paymentDate = null) {
+    updatePayment(id, paid, paymentDate = null, amount = null) {
         const payments = this.getData(this.STORAGE_KEYS.payments);
         const index = payments.findIndex(p => p.id === parseInt(id));
 
         if (index !== -1) {
             payments[index].paid = paid;
             payments[index].payment_date = paid ? (paymentDate || new Date().toISOString().split('T')[0]) : null;
+            if (amount !== null) {
+                payments[index].amount = parseInt(amount);
+            }
             this.setData(this.STORAGE_KEYS.payments, payments);
             return payments[index];
         }
         return null;
+    }
+
+    /**
+     * 회비 찾기 (회원ID, 년도, 월로)
+     */
+    getPaymentByMemberYearMonth(memberId, year, month) {
+        const payments = this.getData(this.STORAGE_KEYS.payments);
+        return payments.find(p =>
+            p.member_id === parseInt(memberId) &&
+            p.year === parseInt(year) &&
+            p.month === parseInt(month)
+        ) || null;
+    }
+
+    /**
+     * 엑셀 스타일 회비 데이터 가져오기
+     */
+    getPaymentMatrix(year = null) {
+        const currentYear = year || new Date().getFullYear();
+        const members = this.getMembers(true);
+        const payments = this.getPayments(null, null, currentYear);
+
+        const matrix = members.map(member => {
+            const row = {
+                member_id: member.id,
+                member_name: member.name,
+                months: {}
+            };
+
+            for (let month = 1; month <= 12; month++) {
+                const payment = payments.find(p =>
+                    p.member_id === member.id && p.month === month
+                );
+                row.months[month] = payment || null;
+            }
+
+            return row;
+        });
+
+        return matrix;
     }
 
     /**
@@ -337,6 +404,54 @@ class Storage {
             return true;
         }
         return false;
+    }
+
+    // ==================== 갤러리 관련 ====================
+
+    /**
+     * 모든 갤러리 이미지 가져오기
+     */
+    getGalleryImages() {
+        const images = this.getData(this.STORAGE_KEYS.gallery);
+        return images.sort((a, b) => new Date(b.created_at) - new Date(a.created_at));
+    }
+
+    /**
+     * 갤러리 이미지 추가
+     */
+    addGalleryImage(title, description, imageData) {
+        const images = this.getData(this.STORAGE_KEYS.gallery);
+        const newId = images.length > 0 ? Math.max(...images.map(i => i.id)) + 1 : 1;
+
+        const newImage = {
+            id: newId,
+            title: title,
+            description: description,
+            image_data: imageData, // Base64 인코딩된 이미지
+            created_at: new Date().toISOString()
+        };
+
+        images.push(newImage);
+        this.setData(this.STORAGE_KEYS.gallery, images);
+        return newImage;
+    }
+
+    /**
+     * 갤러리 이미지 삭제
+     */
+    deleteGalleryImage(id) {
+        const images = this.getData(this.STORAGE_KEYS.gallery);
+        const filtered = images.filter(i => i.id !== parseInt(id));
+        this.setData(this.STORAGE_KEYS.gallery, filtered);
+        return true;
+    }
+
+    /**
+     * 갤러리 이미지 조회 (ID로)
+     */
+    getGalleryImage(id) {
+        const images = this.getData(this.STORAGE_KEYS.gallery);
+        return images.find(i => i.id === parseInt(id)) || null;
     }
 }
 
