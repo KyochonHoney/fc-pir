@@ -248,11 +248,11 @@
         <div class="legend">
             <div class="legend-item">
                 <div class="legend-box paid"></div>
-                <span>납부 완료 (클릭: 미납 처리)</span>
+                <span>납부 완료 (클릭: 옵션 선택)</span>
             </div>
             <div class="legend-item">
                 <div class="legend-box unpaid"></div>
-                <span>미납 (클릭: 납부 처리)</span>
+                <span>미납 (클릭: 옵션 선택)</span>
             </div>
             <div class="legend-item">
                 <div class="legend-box empty"></div>
@@ -308,6 +308,26 @@
         </div>
     </div>
 
+    <!-- 회비 관리 옵션 모달 -->
+    <div id="paymentOptionsModal" class="modal">
+        <div class="modal-content">
+            <div class="modal-header">
+                <h3 id="optionsModalTitle">회비 관리</h3>
+            </div>
+
+            <div style="margin: 20px 0;">
+                <p id="optionsModalInfo" style="color: #666; margin-bottom: 20px;"></p>
+            </div>
+
+            <div class="modal-actions" style="flex-direction: column; gap: 10px;">
+                <button id="optionToggleBtn" onclick="togglePaymentStatus()" class="btn btn-primary" style="width: 100%;"></button>
+                <button onclick="editPayment()" class="btn" style="background: #ffc107; color: #000; width: 100%;">수정</button>
+                <button onclick="deletePayment()" class="btn btn-danger" style="width: 100%;">삭제</button>
+                <button onclick="closeOptionsModal()" class="btn btn-secondary" style="width: 100%;">취소</button>
+            </div>
+        </div>
+    </div>
+
     <footer style="background: #2c3e50; color: white; text-align: center; padding: 20px; margin-top: 50px;">
         <p>&copy; 2025 FC PIR. All rights reserved.</p>
     </footer>
@@ -322,6 +342,7 @@
 
         let currentYear = new Date().getFullYear();
         let currentCell = null; // 현재 선택된 셀 정보
+        let currentPayment = null; // 현재 선택된 회비 정보
 
         // 연도 변경
         function changeYear(delta) {
@@ -464,22 +485,8 @@
                 // 새 회비 등록
                 openModal(memberId, member.name, month, null, false);
             } else {
-                // 기존 회비 토글
-                if (isPaid) {
-                    // 납부 완료 → 미납으로 변경
-                    if (confirm(`${member.name}님의 ${month}월 회비를 미납 처리하시겠습니까?`)) {
-                        storage.updatePayment(paymentId, false);
-                        loadPaymentMatrix();
-                        loadStatistics();
-                    }
-                } else {
-                    // 미납 → 납부 완료로 변경
-                    if (confirm(`${member.name}님의 ${month}월 회비를 납부 처리하시겠습니까?`)) {
-                        storage.updatePayment(paymentId, true);
-                        loadPaymentMatrix();
-                        loadStatistics();
-                    }
-                }
+                // 기존 회비 관리 옵션 모달 열기
+                openOptionsModal(memberId, member.name, month, paymentId, isPaid);
             }
         }
 
@@ -517,24 +524,131 @@
                 return;
             }
 
-            const result = storage.addPayment(
-                currentCell.memberId,
-                currentYear,
-                currentCell.month,
-                amount,
-                false,
-                note
-            );
+            if (currentCell.paymentId) {
+                // 수정
+                storage.updatePayment(currentCell.paymentId, false, null, amount);
+                const payments = storage.getData(storage.STORAGE_KEYS.payments);
+                const payment = payments.find(p => p.id === currentCell.paymentId);
+                if (payment) {
+                    payment.note = note;
+                    storage.setData(storage.STORAGE_KEYS.payments, payments);
+                }
+                alert('회비가 수정되었습니다.');
+            } else {
+                // 새 등록
+                const result = storage.addPayment(
+                    currentCell.memberId,
+                    currentYear,
+                    currentCell.month,
+                    amount,
+                    false,
+                    note
+                );
 
-            if (result.error) {
-                alert(result.error);
-                return;
+                if (result.error) {
+                    alert(result.error);
+                    return;
+                }
+                alert('회비가 등록되었습니다.');
             }
 
-            alert('회비가 등록되었습니다.');
             closeModal();
             loadPaymentMatrix();
             loadStatistics();
+        }
+
+        // 옵션 모달 열기
+        function openOptionsModal(memberId, memberName, month, paymentId, isPaid) {
+            const member = storage.getMember(memberId);
+            const payments = storage.getData(storage.STORAGE_KEYS.payments);
+            const payment = payments.find(p => p.id === paymentId);
+
+            if (!payment) {
+                alert('회비 정보를 찾을 수 없습니다.');
+                return;
+            }
+
+            currentPayment = { memberId, memberName, month, paymentId, isPaid, payment };
+
+            document.getElementById('optionsModalTitle').textContent = `${memberName} - ${month}월 회비`;
+
+            const statusText = isPaid ? '납부 완료' : '미납';
+            const amountText = formatCurrency(payment.amount);
+            document.getElementById('optionsModalInfo').innerHTML = `
+                <strong>현재 상태:</strong> ${statusText}<br>
+                <strong>금액:</strong> ${amountText}<br>
+                <strong>비고:</strong> ${payment.note || '-'}
+            `;
+
+            const toggleBtn = document.getElementById('optionToggleBtn');
+            if (isPaid) {
+                toggleBtn.textContent = '미납 처리';
+                toggleBtn.style.background = '#dc3545';
+            } else {
+                toggleBtn.textContent = '납부 처리';
+                toggleBtn.style.background = '#28a745';
+            }
+
+            document.getElementById('paymentOptionsModal').classList.add('active');
+        }
+
+        // 옵션 모달 닫기
+        function closeOptionsModal() {
+            document.getElementById('paymentOptionsModal').classList.remove('active');
+            currentPayment = null;
+        }
+
+        // 납부 상태 토글
+        function togglePaymentStatus() {
+            if (!currentPayment) return;
+
+            const { memberName, month, paymentId, isPaid } = currentPayment;
+            const action = isPaid ? '미납 처리' : '납부 처리';
+
+            if (confirm(`${memberName}님의 ${month}월 회비를 ${action}하시겠습니까?`)) {
+                storage.updatePayment(paymentId, !isPaid);
+                closeOptionsModal();
+                loadPaymentMatrix();
+                loadStatistics();
+            }
+        }
+
+        // 회비 수정
+        function editPayment() {
+            if (!currentPayment) return;
+
+            const { memberId, memberName, month, paymentId, payment } = currentPayment;
+
+            closeOptionsModal();
+
+            currentCell = { memberId, month, paymentId, isPaid: payment.paid };
+
+            document.getElementById('modalTitle').textContent = '회비 수정';
+            document.getElementById('modalMemberName').value = memberName;
+            document.getElementById('modalMonth').value = `${currentYear}년 ${month}월`;
+            document.getElementById('modalAmount').value = payment.amount;
+            document.getElementById('modalNote').value = payment.note || '';
+
+            document.getElementById('paymentModal').classList.add('active');
+        }
+
+        // 회비 삭제
+        function deletePayment() {
+            if (!currentPayment) return;
+
+            const { memberName, month, paymentId } = currentPayment;
+
+            if (confirm(`${memberName}님의 ${month}월 회비를 삭제하시겠습니까?\n\n이 작업은 되돌릴 수 없습니다.`)) {
+                const result = storage.deletePayment(paymentId);
+                if (result) {
+                    alert('회비가 삭제되었습니다.');
+                    closeOptionsModal();
+                    loadPaymentMatrix();
+                    loadStatistics();
+                } else {
+                    alert('회비 삭제에 실패했습니다.');
+                }
+            }
         }
 
         // 금액 포맷 (간단)
@@ -571,6 +685,12 @@
         document.getElementById('paymentModal').addEventListener('click', function(e) {
             if (e.target === this) {
                 closeModal();
+            }
+        });
+
+        document.getElementById('paymentOptionsModal').addEventListener('click', function(e) {
+            if (e.target === this) {
+                closeOptionsModal();
             }
         });
 

@@ -221,12 +221,12 @@
 
             <form id="uploadForm">
                 <div class="file-input-wrapper">
-                    <input type="file" id="imageFile" accept="image/*" required>
+                    <input type="file" id="imageFile" accept="image/*,.heic,.heif" required>
                     <label for="imageFile" class="file-input-label" id="fileLabel">
                         <div style="text-align: center;">
                             <div style="font-size: 3rem; margin-bottom: 10px;">📁</div>
                             <div style="font-size: 1.1rem; color: #667eea;">클릭하여 이미지 선택</div>
-                            <div style="font-size: 0.9rem; color: #999; margin-top: 5px;">JPG, PNG, GIF 지원</div>
+                            <div style="font-size: 0.9rem; color: #999; margin-top: 5px;">JPG, PNG, GIF, HEIC 지원 (아이폰 사진 포함)</div>
                         </div>
                     </label>
                 </div>
@@ -286,9 +286,13 @@
                 return;
             }
 
-            // 파일 타입 체크
-            if (!file.type.startsWith('image/')) {
-                alert('이미지 파일만 업로드 가능합니다.');
+            // 파일 타입 체크 (HEIC/HEIF도 허용)
+            const validTypes = ['image/jpeg', 'image/jpg', 'image/png', 'image/gif', 'image/webp', 'image/heic', 'image/heif'];
+            const fileName = file.name.toLowerCase();
+            const isValidType = file.type.startsWith('image/') || fileName.endsWith('.heic') || fileName.endsWith('.heif');
+
+            if (!isValidType) {
+                alert('이미지 파일만 업로드 가능합니다.\n지원 형식: JPG, PNG, GIF, HEIC (아이폰 사진)');
                 this.value = '';
                 return;
             }

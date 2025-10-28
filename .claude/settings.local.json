@@ -6,7 +6,8 @@
       "Bash(tree:*)",
       "Bash(dir:*)",
       "Read(//c/**)",
-      "Bash(git add:*)"
+      "Bash(git add:*)",
+      "Bash(start http://localhost/football/admin/payments.html)"
     ],
     "deny": [],
     "ask": []

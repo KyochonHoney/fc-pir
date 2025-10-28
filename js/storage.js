@@ -214,6 +214,21 @@ class Storage {
     }
 
     /**
+     * 회비 삭제
+     */
+    deletePayment(id) {
+        const payments = this.getData(this.STORAGE_KEYS.payments);
+        const index = payments.findIndex(p => p.id === parseInt(id));
+
+        if (index !== -1) {
+            const deleted = payments.splice(index, 1)[0];
+            this.setData(this.STORAGE_KEYS.payments, payments);
+            return deleted;
+        }
+        return null;
+    }
+
+    /**
      * 회비 찾기 (회원ID, 년도, 월로)
      */
     getPaymentByMemberYearMonth(memberId, year, month) {
