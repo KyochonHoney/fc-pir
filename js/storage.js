@@ -19,44 +19,10 @@ class Storage {
     }
 
     /**
-     * 데이터 초기화
+     * 데이터 초기화 (샘플 데이터 제거)
      */
     initializeData() {
-        if (!this.getMembers().length) {
-            this.loadSampleData();
-        }
-    }
-
-    /**
-     * 샘플 데이터 로드
-     */
-    loadSampleData() {
-        const sampleMembers = [
-            { id: 1, name: '김철수', position: 'ATT', level: 8, is_active: true, created_at: new Date().toISOString() },
-            { id: 2, name: '이영희', position: 'DEF', level: 7, is_active: true, created_at: new Date().toISOString() },
-            { id: 3, name: '박민수', position: 'ALL', level: 9, is_active: true, created_at: new Date().toISOString() },
-            { id: 4, name: '정수진', position: 'ATT', level: 6, is_active: true, created_at: new Date().toISOString() },
-            { id: 5, name: '최동욱', position: 'DEF', level: 7, is_active: true, created_at: new Date().toISOString() },
-            { id: 6, name: '강서연', position: 'ALL', level: 8, is_active: true, created_at: new Date().toISOString() },
-            { id: 7, name: '윤재훈', position: 'ATT', level: 5, is_active: true, created_at: new Date().toISOString() },
-            { id: 8, name: '한지우', position: 'DEF', level: 6, is_active: true, created_at: new Date().toISOString() },
-            { id: 9, name: '조민호', position: 'ALL', level: 9, is_active: true, created_at: new Date().toISOString() },
-            { id: 10, name: '신유진', position: 'ATT', level: 7, is_active: true, created_at: new Date().toISOString() }
-        ];
-
-        const currentYear = new Date().getFullYear();
-        const samplePayments = [
-            { id: 1, member_id: 1, year: currentYear, month: 1, amount: 50000, paid: true, payment_date: `${currentYear}-01-15`, note: '1월 회비 (입회비 포함)', created_at: new Date().toISOString() },
-            { id: 2, member_id: 1, year: currentYear, month: 2, amount: 35000, paid: true, payment_date: `${currentYear}-02-10`, note: '2월 회비', created_at: new Date().toISOString() },
-            { id: 3, member_id: 2, year: currentYear, month: 1, amount: 50000, paid: true, payment_date: `${currentYear}-01-20`, note: '1월 회비 (입회비 포함)', created_at: new Date().toISOString() },
-            { id: 4, member_id: 3, year: currentYear, month: 1, amount: 50000, paid: false, payment_date: null, note: '1월 회비 (입회비 포함)', created_at: new Date().toISOString() },
-            { id: 5, member_id: 3, year: currentYear, month: 2, amount: 35000, paid: true, payment_date: `${currentYear}-02-05`, note: '2월 회비', created_at: new Date().toISOString() }
-        ];
-
-        this.setData(this.STORAGE_KEYS.members, sampleMembers);
-        this.setData(this.STORAGE_KEYS.payments, samplePayments);
-        this.setData(this.STORAGE_KEYS.teams, []);
-        this.setData(this.STORAGE_KEYS.attendances, []);
+        // 빈 상태로 시작 (샘플 데이터 자동 로드 안 함)
     }
 
     /**

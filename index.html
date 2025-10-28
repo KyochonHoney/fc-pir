@@ -55,9 +55,9 @@
 
             <div style="display: grid; grid-template-columns: repeat(auto-fit, minmax(250px, 1fr)); gap: 15px;">
                 <a href="/team-generator.html" class="btn btn-primary btn-block">⚽ 팀 편성하기</a>
-                <a href="/payment-status.html" class="btn btn-secondary btn-block">📊 회비 현황 보기</a>
+                <a href="/payment-status.html" class="btn btn-secondary btn-block">💰 회비 현황 보기</a>
+                <a href="/gallery.html" class="btn btn-secondary btn-block">📸 갤러리 보기</a>
                 <a href="/admin/" class="btn btn-success btn-block" style="background: #28a745;">⚙️ 관리자 페이지</a>
-                <button onclick="resetData()" class="btn" style="background: #ffc107; color: #333;">🔄 데이터 초기화</button>
             </div>
         </div>
 
@@ -80,7 +80,7 @@
                 </tr>
                 <tr>
                     <td style="padding: 10px;"><strong>기본 회비</strong></td>
-                    <td style="padding: 10px;">10,000원</td>
+                    <td style="padding: 10px;">35,000원 (1월: 50,000원)</td>
                 </tr>
             </table>
         </div>
@@ -114,14 +114,6 @@
             } else {
                 adminLink.textContent = '관리자';
                 adminLink.href = '/admin/login.html';
-            }
-        }
-
-        // 데이터 초기화
-        function resetData() {
-            if (storage.resetAllData()) {
-                alert('데이터가 초기화되었습니다.');
-                location.reload();
             }
         }
 
