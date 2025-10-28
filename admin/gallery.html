@@ -268,10 +268,12 @@
         <p>&copy; 2025 FC PIR. All rights reserved.</p>
     </footer>
 
-    <script src="/js/storage.js"></script>
-    <script>
+    <script type="module">
+        import storage from '/js/storage-firebase.js';
+        window.storage = storage;
+
         // 관리자 인증 확인
-        if (!storage.isAdminLoggedIn()) {
+        if (!await storage.isAdminLoggedIn()) {
             alert('로그인이 필요합니다.');
             window.location.href = '/admin/login.html';
         }
@@ -377,7 +379,7 @@
         });
 
         // 업로드 폼 제출
-        document.getElementById('uploadForm').addEventListener('submit', function(e) {
+        document.getElementById('uploadForm').addEventListener('submit', async function(e) {
             e.preventDefault();
 
             if (!selectedImageData) {
@@ -395,7 +397,7 @@
 
             try {
                 // 저장
-                storage.addGalleryImage(title, description, selectedImageData);
+                await storage.addGalleryImage(title, description, selectedImageData);
                 alert('사진이 업로드되었습니다.');
 
                 // 폼 초기화
@@ -424,8 +426,8 @@
         });
 
         // 갤러리 로드
-        function loadGallery() {
-            const images = storage.getGalleryImages();
+        async function loadGallery() {
+            const images = await storage.getGalleryImages();
             const container = document.getElementById('galleryContainer');
             document.getElementById('imageCount').textContent = images.length;
 
@@ -465,12 +467,12 @@
         }
 
         // 이미지 삭제
-        function deleteImage(id) {
+        async function deleteImage(id) {
             if (!confirm('이 사진을 삭제하시겠습니까?')) {
                 return;
             }
 
-            storage.deleteGalleryImage(id);
+            await storage.deleteGalleryImage(id);
             alert('사진이 삭제되었습니다.');
             loadGallery();
         }
@@ -497,13 +499,13 @@
         // 로그아웃
         function logout() {
             if (confirm('로그아웃하시겠습니까?')) {
-                storage.adminLogout();
+                await storage.adminLogout();
                 window.location.href = '/admin/login.html';
             }
         }
 
         // 모달 외부 클릭 시 닫기
-        document.getElementById('imageModal').addEventListener('click', function(e) {
+        document.getElementById('imageModal').addEventListener('click', async function(e) {
             if (e.target === this) {
                 closeImageModal();
             }

@@ -332,13 +332,18 @@
         <p>&copy; 2025 FC PIR. All rights reserved.</p>
     </footer>
 
-    <script src="/js/storage.js"></script>
-    <script>
+    <script type="module">
+        import storage from '/js/storage-firebase.js';
+        window.storage = storage;
+
         // 관리자 인증 확인
-        if (!storage.isAdminLoggedIn()) {
-            alert('로그인이 필요합니다.');
-            window.location.href = '/admin/login.html';
-        }
+        (async function() {
+            const loggedIn = await await storage.isAdminLoggedIn();
+            if (!loggedIn) {
+                alert('로그인이 필요합니다.');
+                window.location.href = '/admin/login.html';
+            }
+        })();
 
         let currentYear = new Date().getFullYear();
         let currentCell = null; // 현재 선택된 셀 정보
@@ -353,8 +358,8 @@
         }
 
         // 통계 로드
-        function loadStatistics() {
-            const matrix = storage.getPaymentMatrix(currentYear);
+        async async function loadStatistics() {
+            const matrix = await await storage.getPaymentMatrix(currentYear);
 
             let totalPaid = 0;
             let totalUnpaid = 0;
@@ -384,8 +389,8 @@
         }
 
         // 회비 매트릭스 로드
-        function loadPaymentMatrix() {
-            const matrix = storage.getPaymentMatrix(currentYear);
+        async async function loadPaymentMatrix() {
+            const matrix = await await storage.getPaymentMatrix(currentYear);
             const container = document.getElementById('paymentMatrix');
 
             if (matrix.length === 0) {
@@ -513,7 +518,7 @@
         }
 
         // 회비 저장
-        function savePayment() {
+        async function savePayment() {
             if (!currentCell) return;
 
             const amount = parseInt(document.getElementById('modalAmount').value);
@@ -526,7 +531,7 @@
 
             if (currentCell.paymentId) {
                 // 수정
-                storage.updatePayment(currentCell.paymentId, false, null, amount);
+                await storage.updatePayment(currentCell.paymentId, false, null, amount);
                 const payments = storage.getData(storage.STORAGE_KEYS.payments);
                 const payment = payments.find(p => p.id === currentCell.paymentId);
                 if (payment) {
@@ -536,7 +541,7 @@
                 alert('회비가 수정되었습니다.');
             } else {
                 // 새 등록
-                const result = storage.addPayment(
+                const result = await storage.addPayment(
                     currentCell.memberId,
                     currentYear,
                     currentCell.month,
@@ -606,7 +611,7 @@
             const action = isPaid ? '미납 처리' : '납부 처리';
 
             if (confirm(`${memberName}님의 ${month}월 회비를 ${action}하시겠습니까?`)) {
-                storage.updatePayment(paymentId, !isPaid);
+                await storage.updatePayment(paymentId, !isPaid);
                 closeOptionsModal();
                 loadPaymentMatrix();
                 loadStatistics();
@@ -633,13 +638,13 @@
         }
 
         // 회비 삭제
-        function deletePayment() {
+        async function deletePayment() {
             if (!currentPayment) return;
 
             const { memberName, month, paymentId } = currentPayment;
 
             if (confirm(`${memberName}님의 ${month}월 회비를 삭제하시겠습니까?\n\n이 작업은 되돌릴 수 없습니다.`)) {
-                const result = storage.deletePayment(paymentId);
+                const result = await storage.deletePayment(paymentId);
                 if (result) {
                     alert('회비가 삭제되었습니다.');
                     closeOptionsModal();
@@ -676,19 +681,19 @@
         // 로그아웃
         function logout() {
             if (confirm('로그아웃하시겠습니까?')) {
-                storage.adminLogout();
+                await storage.adminLogout();
                 window.location.href = '/admin/login.html';
             }
         }
 
         // 모달 외부 클릭 시 닫기
-        document.getElementById('paymentModal').addEventListener('click', function(e) {
+        document.getElementById('paymentModal').addEventListener('click', async function(e) {
             if (e.target === this) {
                 closeModal();
             }
         });
 
-        document.getElementById('paymentOptionsModal').addEventListener('click', function(e) {
+        document.getElementById('paymentOptionsModal').addEventListener('click', async function(e) {
             if (e.target === this) {
                 closeOptionsModal();
             }

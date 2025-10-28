@@ -90,11 +90,13 @@
         <p>&copy; 2025 FC PIR. All rights reserved.</p>
     </footer>
 
-    <script src="/js/storage.js"></script>
-    <script>
+    <script type="module">
+        import storage from '/js/storage-firebase.js';
+        window.storage = storage;
+
         // 통계 로드
-        function loadStatistics() {
-            const members = storage.getMembers(true);
+        async function loadStatistics() {
+            const members = await storage.getMembers(true);
             const stats = storage.getPaymentStatistics();
 
             document.getElementById('totalMembers').textContent = stats.total_members;
@@ -104,8 +106,8 @@
         }
 
         // 관리자 링크 업데이트
-        function updateAdminLink() {
-            const isLoggedIn = storage.isAdminLoggedIn();
+        async function updateAdminLink() {
+            const isLoggedIn = await storage.isAdminLoggedIn();
             const adminLink = document.getElementById('adminLink');
 
             if (isLoggedIn) {

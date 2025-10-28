@@ -73,8 +73,8 @@
         let selectedMembers = new Set();
 
         // 멤버 목록 로드
-        function loadMembers() {
-            const members = storage.getMembers(true);
+        async function loadMembers() {
+            const members = await storage.getMembers(true);
             const memberList = document.getElementById('memberList');
 
             if (members.length === 0) {
@@ -113,7 +113,7 @@
         }
 
         // 선택된 멤버 수 업데이트
-        function updateSelectedCount() {
+        async function updateSelectedCount() {
             document.getElementById('selectedCount').textContent = selectedMembers.size;
         }
 
@@ -148,7 +148,7 @@
             const teamCount = parseInt(document.getElementById('teamCount').value);
 
             // 선택된 멤버 데이터 가져오기
-            const allMembers = storage.getMembers(true);
+            const allMembers = await storage.getMembers(true);
             const members = allMembers.filter(m => selectedMembers.has(m.id));
 
             // 최소 인원 체크
@@ -180,7 +180,7 @@
                 level_diff: parseFloat(result.level_diff),
                 balance_quality: result.balance_quality
             };
-            storage.saveTeam(teamRecord);
+            await storage.saveTeam(teamRecord);
         }
 
         // 팀 편성 결과 표시

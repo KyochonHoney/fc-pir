@@ -193,11 +193,13 @@
         <p>&copy; 2025 FC PIR. All rights reserved.</p>
     </footer>
 
-    <script src="/js/storage.js"></script>
-    <script>
+    <script type="module">
+        import storage from '/js/storage-firebase.js';
+        window.storage = storage;
+
         // 갤러리 로드
-        function loadGallery() {
-            const images = storage.getGalleryImages();
+        async function loadGallery() {
+            const images = await storage.getGalleryImages();
             const container = document.getElementById('galleryContainer');
 
             if (images.length === 0) {
@@ -263,7 +265,7 @@
         }
 
         // 모달 외부 클릭 시 닫기
-        document.getElementById('imageModal').addEventListener('click', function(e) {
+        document.getElementById('imageModal').addEventListener('click', async function(e) {
             if (e.target === this) {
                 closeImageModal();
             }
