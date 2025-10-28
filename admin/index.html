@@ -103,17 +103,26 @@
         <p>&copy; 2025 FC PIR. All rights reserved.</p>
     </footer>
 
-    <script src="/js/storage.js"></script>
-    <script>
+    <!-- Firebase SDK (v12 모듈 방식) -->
+    <script type="module">
+        // Firebase 모듈 import
+        import storage from '/js/storage-firebase.js';
+
+        // 전역 접근을 위해 window에 등록
+        window.storage = storage;
+
         // 관리자 인증 확인
-        if (!storage.isAdminLoggedIn()) {
-            alert('로그인이 필요합니다.');
-            window.location.href = '/admin/login.html';
-        }
+        (async function() {
+            const loggedIn = await storage.isAdminLoggedIn();
+            if (!loggedIn) {
+                alert('로그인이 필요합니다.');
+                window.location.href = '/admin/login.html';
+            }
+        })();
 
         // 통계 로드
-        function loadStatistics() {
-            const stats = storage.getPaymentStatistics();
+        async function loadStatistics() {
+            const stats = await storage.getPaymentStatistics();
 
             document.getElementById('totalMembers').textContent = stats.total_members;
             document.getElementById('paymentRate').textContent = stats.payment_rate + '%';
@@ -122,8 +131,8 @@
         }
 
         // 관리자 정보 로드
-        function loadAdminInfo() {
-            const session = storage.getAdminSession();
+        async function loadAdminInfo() {
+            const session = await storage.getAdminSession();
             if (session) {
                 document.getElementById('adminName').textContent = session.name;
                 const loginTime = new Date(session.login_time).toLocaleString('ko-KR');
@@ -132,8 +141,8 @@
         }
 
         // 최근 팀 편성 기록 로드
-        function loadRecentTeams() {
-            const teams = storage.getTeamHistory(5);
+        async function loadRecentTeams() {
+            const teams = await storage.getTeamHistory(5);
             const recentTeams = document.getElementById('recentTeams');
 
             if (teams.length === 0) {
@@ -179,9 +188,9 @@
         }
 
         // 로그아웃
-        function logout() {
+        async function logout() {
             if (confirm('로그아웃하시겠습니까?')) {
-                storage.adminLogout();
+                await storage.adminLogout();
                 window.location.href = '/admin/login.html';
             }
         }

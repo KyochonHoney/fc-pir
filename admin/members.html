@@ -108,17 +108,22 @@
         <p>&copy; 2025 FC PIR. All rights reserved.</p>
     </footer>
 
-    <script src="/js/storage.js"></script>
-    <script>
+    <script type="module">
+        import storage from '/js/storage-firebase.js';
+        window.storage = storage;
+
         // 관리자 인증 확인
-        if (!storage.isAdminLoggedIn()) {
-            alert('로그인이 필요합니다.');
-            window.location.href = '/admin/login.html';
-        }
+        (async function() {
+            const loggedIn = await storage.isAdminLoggedIn();
+            if (!loggedIn) {
+                alert('로그인이 필요합니다.');
+                window.location.href = '/admin/login.html';
+            }
+        })();
 
         // 멤버 목록 로드
-        function loadMembers() {
-            const members = storage.getMembers();
+        async function loadMembers() {
+            const members = await storage.getMembers();
             const memberList = document.getElementById('memberList');
             document.getElementById('memberCount').textContent = members.length;
 
@@ -174,7 +179,7 @@
         }
 
         // 멤버 추가
-        document.getElementById('addMemberForm').addEventListener('submit', function(e) {
+        document.getElementById('addMemberForm').addEventListener('submit', async function(e) {
             e.preventDefault();
 
             const name = document.getElementById('name').value.trim();
@@ -186,14 +191,14 @@
                 return;
             }
 
-            storage.addMember(name, position, level);
+            await storage.addMember(name, position, level);
             alert('멤버가 추가되었습니다.');
 
             // 폼 초기화
             document.getElementById('addMemberForm').reset();
 
             // 목록 새로고침
-            loadMembers();
+            await loadMembers();
         });
 
         // 멤버 수정 (모달 열기)
@@ -207,7 +212,7 @@
         }
 
         // 멤버 수정 (폼 제출)
-        document.getElementById('editMemberForm').addEventListener('submit', function(e) {
+        document.getElementById('editMemberForm').addEventListener('submit', async function(e) {
             e.preventDefault();
 
             const id = document.getElementById('edit-id').value;
@@ -215,11 +220,11 @@
             const position = document.getElementById('edit-position').value;
             const level = parseInt(document.getElementById('edit-level').value);
 
-            storage.updateMember(id, name, position, level);
+            await storage.updateMember(id, name, position, level);
             alert('멤버 정보가 수정되었습니다.');
 
             closeEditModal();
-            loadMembers();
+            await loadMembers();
         });
 
         // 모달 닫기
@@ -228,14 +233,14 @@
         }
 
         // 멤버 삭제
-        function deleteMember(id) {
+        async function deleteMember(id) {
             if (!confirm('정말 삭제하시겠습니까?')) {
                 return;
             }
 
-            storage.deleteMember(id);
+            await storage.deleteMember(id);
             alert('멤버가 삭제되었습니다.');
-            loadMembers();
+            await loadMembers();
         }
 
         // 포지션 배지

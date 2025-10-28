@@ -64,36 +64,63 @@
         </div>
     </div>
 
-    <script src="/js/storage.js"></script>
-    <script>
+    <!-- Firebase SDK (v12 모듈 방식) -->
+    <script type="module">
+        // Firebase 모듈 import
+        import storage from '/js/storage-firebase.js';
+
+        // 전역 접근을 위해 window에 등록
+        window.storage = storage;
+
         // 이미 로그인된 경우 대시보드로 리다이렉트
-        if (storage.isAdminLoggedIn()) {
-            window.location.href = '/admin/';
-        }
+        (async function() {
+            const loggedIn = await storage.isAdminLoggedIn();
+            if (loggedIn) {
+                window.location.href = '/admin/';
+            }
+        })();
 
         // 로그인 폼 제출
-        document.getElementById('loginForm').addEventListener('submit', function(e) {
+        document.getElementById('loginForm').addEventListener('submit', async function(e) {
             e.preventDefault();
 
             const username = document.getElementById('username').value;
             const password = document.getElementById('password').value;
             const errorMessage = document.getElementById('errorMessage');
+            const submitBtn = e.target.querySelector('button[type="submit"]');
 
-            // 로그인 시도
-            const result = storage.adminLogin(username, password);
+            // 버튼 비활성화
+            submitBtn.disabled = true;
+            submitBtn.textContent = '로그인 중...';
 
-            if (result.success) {
-                // 로그인 성공
-                window.location.href = '/admin/';
-            } else {
-                // 로그인 실패
-                errorMessage.textContent = result.message;
+            try {
+                // 로그인 시도 (async)
+                const result = await storage.adminLogin(username, password);
+
+                if (result.success) {
+                    // 로그인 성공
+                    window.location.href = '/admin/';
+                } else {
+                    // 로그인 실패
+                    errorMessage.textContent = result.message;
+                    errorMessage.style.display = 'block';
+
+                    // 3초 후 오류 메시지 숨김
+                    setTimeout(() => {
+                        errorMessage.style.display = 'none';
+                    }, 3000);
+
+                    // 버튼 재활성화
+                    submitBtn.disabled = false;
+                    submitBtn.textContent = '로그인';
+                }
+            } catch (error) {
+                console.error('로그인 오류:', error);
+                errorMessage.textContent = '로그인 중 오류가 발생했습니다.';
                 errorMessage.style.display = 'block';
 
-                // 3초 후 오류 메시지 숨김
-                setTimeout(() => {
-                    errorMessage.style.display = 'none';
-                }, 3000);
+                submitBtn.disabled = false;
+                submitBtn.textContent = '로그인';
             }
         });
     </script>

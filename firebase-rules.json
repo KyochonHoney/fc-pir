@@ -1,0 +1,36 @@
+{
+  "rules": {
+    ".read": "auth == null",
+    ".write": "auth == null",
+
+    "members": {
+      ".read": true,
+      ".write": true,
+      ".indexOn": ["id", "is_active"]
+    },
+
+    "payments": {
+      ".read": true,
+      ".write": true,
+      ".indexOn": ["id", "member_id", "year", "month", "paid"]
+    },
+
+    "teams": {
+      ".read": true,
+      ".write": true,
+      ".indexOn": ["id", "created_at"]
+    },
+
+    "gallery": {
+      ".read": true,
+      ".write": true,
+      ".indexOn": ["id", "created_at"]
+    },
+
+    "admin_sessions": {
+      ".read": true,
+      ".write": true,
+      ".indexOn": ["expires"]
+    }
+  }
+}
