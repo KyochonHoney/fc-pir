@@ -6,7 +6,36 @@
     <title>회비 관리 - FC PIR</title>
     <link rel="stylesheet" href="/assets/css/style.css">
     <style>
-        /* CSS는 변경 사항 없음 */
+        .payment-matrix { overflow-x: auto; margin: 20px 0; }
+        .payment-table { width: 100%; border-collapse: collapse; min-width: 1000px; background: white; box-shadow: 0 1px 3px rgba(0,0,0,0.1); }
+        .payment-table th, .payment-table td { padding: 10px 6px; text-align: center; border: 1px solid #dee2e6; font-size: 0.85rem; }
+        .payment-table thead th { background: linear-gradient(135deg, #667eea 0%, #764ba2 100%); color: white; font-weight: 600; position: sticky; top: 0; z-index: 10; }
+        .payment-table tbody th { background: #f8f9fa; font-weight: 600; text-align: left; position: sticky; left: 0; z-index: 5; }
+        .payment-cell { cursor: pointer; font-size: 0.85rem; font-weight: 600; transition: all 0.2s; position: relative; }
+        .payment-cell:hover { transform: scale(1.05); box-shadow: 0 2px 8px rgba(0,0,0,0.2); }
+        .payment-cell.paid { background: #d4edda; color: #155724; }
+        .payment-cell.unpaid { background: #f8d7da; color: #721c24; }
+        .payment-cell.empty { background: #fff3cd; color: #856404; }
+        .year-selector { display: flex; justify-content: center; align-items: center; gap: 15px; margin: 20px 0; }
+        .year-selector button { padding: 8px 16px; border: none; background: #667eea; color: white; border-radius: 4px; cursor: pointer; font-size: 1rem; }
+        .year-selector button:hover { background: #5568d3; }
+        .year-selector span { font-size: 1.5rem; font-weight: bold; color: #333; }
+        .stats-row { background: #e7f3ff !important; font-weight: bold; }
+        .legend { display: flex; gap: 20px; justify-content: center; margin: 20px 0; flex-wrap: wrap; }
+        .legend-item { display: flex; align-items: center; gap: 8px; }
+        .legend-box { width: 30px; height: 20px; border: 1px solid #dee2e6; }
+        .legend-box.paid { background: #d4edda; }
+        .legend-box.unpaid { background: #f8d7da; }
+        .legend-box.empty { background: #fff3cd; }
+        .modal { display: none; position: fixed; z-index: 1000; left: 0; top: 0; width: 100%; height: 100%; background: rgba(0,0,0,0.5); animation: fadeIn 0.2s; }
+        .modal.active { display: flex; justify-content: center; align-items: center; }
+        .modal-content { background: white; padding: 30px; border-radius: 8px; max-width: 400px; width: 90%; animation: slideIn 0.3s; }
+        @keyframes fadeIn { from { opacity: 0; } to { opacity: 1; } }
+        @keyframes slideIn { from { transform: translateY(-50px); opacity: 0; } to { transform: translateY(0); opacity: 1; } }
+        .modal-header { margin-bottom: 20px; }
+        .modal-header h3 { margin: 0; color: #333; }
+        .modal-actions { display: flex; gap: 10px; margin-top: 20px; }
+        .modal-actions button { flex: 1; padding: 10px; border: none; border-radius: 4px; cursor: pointer; font-size: 1rem; }
     </style>
 </head>
 <body>
@@ -29,19 +58,37 @@
             <p>회원들의 월별 회비를 관리합니다 (셀 클릭으로 납부 처리/금액 입력)</p>
         </div>
 
-        <!-- 통계, 범례, 연도 선택기 등 HTML 구조는 변경 없음 -->
+        <div style="display: grid; grid-template-columns: repeat(auto-fit, minmax(200px, 1fr)); gap: 20px; margin-bottom: 30px;">
+            <div class="card text-center"><h3 style="color: #17a2b8; font-size: 2.5rem;" id="paymentRate">0%</h3><p style="color: #666;">평균 납부율</p></div>
+            <div class="card text-center"><h3 style="color: #28a745; font-size: 2.5rem;" id="paidCount">0건</h3><p style="color: #666;">납부 완료</p></div>
+            <div class="card text-center"><h3 style="color: #dc3545; font-size: 2.5rem;" id="unpaidCount">0건</h3><p style="color: #666;">미납</p></div>
+            <div class="card text-center"><h3 style="color: #6c757d; font-size: 2.5rem;" id="totalAmount">0원</h3><p style="color: #666;">총 납부액</p></div>
+        </div>
+
+        <div class="legend">
+            <div class="legend-item"><div class="legend-box paid"></div><span>납부 완료</span></div>
+            <div class="legend-item"><div class="legend-box unpaid"></div><span>미납</span></div>
+            <div class="legend-item"><div class="legend-box empty"></div><span>기록 없음</span></div>
+        </div>
+
+        <div class="year-selector">
+            <button id="prevYearBtn">◀ 이전</button>
+            <span id="currentYear">2025</span>
+            <button id="nextYearBtn">다음 ▶</button>
+        </div>
 
         <div class="card">
-            <div class="payment-matrix" id="paymentMatrix">
-                <!-- JavaScript로 동적 생성 -->
-            </div>
+            <div class="payment-matrix" id="paymentMatrix"></div>
         </div>
     </div>
 
-    <!-- 회비 등록/수정 모달 -->
     <div id="paymentModal" class="modal">
         <div class="modal-content">
-            <!-- ... 모달 내용 ... -->
+            <div class="modal-header"><h3 id="modalTitle">회비 등록</h3></div>
+            <div class="form-group"><label>회원명</label><input type="text" id="modalMemberName" class="form-control" readonly></div>
+            <div class="form-group"><label>대상 월</label><input type="text" id="modalMonth" class="form-control" readonly></div>
+            <div class="form-group"><label>금액 *</label><input type="number" id="modalAmount" class="form-control" value="35000" required></div>
+            <div class="form-group"><label>비고</label><input type="text" id="modalNote" class="form-control" placeholder="예: 1월 회비"></div>
             <div class="modal-actions">
                 <button id="modalCancelBtn" class="btn btn-secondary">취소</button>
                 <button id="modalSaveBtn" class="btn btn-primary">저장</button>
@@ -49,10 +96,10 @@
         </div>
     </div>
 
-    <!-- 회비 관리 옵션 모달 -->
     <div id="paymentOptionsModal" class="modal">
         <div class="modal-content">
-            <!-- ... 모달 내용 ... -->
+            <div class="modal-header"><h3 id="optionsModalTitle">회비 관리</h3></div>
+            <div style="margin: 20px 0;"><p id="optionsModalInfo" style="color: #666; margin-bottom: 20px;"></p></div>
             <div class="modal-actions" style="flex-direction: column; gap: 10px;">
                 <button id="optionToggleBtn" class="btn btn-primary" style="width: 100%;"></button>
                 <button id="optionEditBtn" class="btn" style="background: #ffc107; color: #000; width: 100%;">수정</button>
@@ -69,22 +116,25 @@
     <script type="module">
         import storage from '/js/storage-firebase.js';
 
-        // 전역 상태 변수
         let currentYear = new Date().getFullYear();
-        let members = [];
-        let matrix = [];
-        let currentCellData = null; // { memberId, month, paymentId, isPaid }
+        let matrixData = [];
+        let currentCellData = null; // { memberId, month, payment, member }
 
-        // DOM 요소 캐싱
         const DOMElements = {
             currentYear: document.getElementById('currentYear'),
             paymentMatrix: document.getElementById('paymentMatrix'),
             paymentModal: document.getElementById('paymentModal'),
             optionsModal: document.getElementById('paymentOptionsModal'),
-            // 추가적인 DOM 요소들...
+            modalTitle: document.getElementById('modalTitle'),
+            modalMemberName: document.getElementById('modalMemberName'),
+            modalMonth: document.getElementById('modalMonth'),
+            modalAmount: document.getElementById('modalAmount'),
+            modalNote: document.getElementById('modalNote'),
+            optionsModalTitle: document.getElementById('optionsModalTitle'),
+            optionsModalInfo: document.getElementById('optionsModalInfo'),
+            optionToggleBtn: document.getElementById('optionToggleBtn'),
         };
 
-        // 헬퍼 함수
         const formatCurrency = (amount) => amount === 0 ? '0원' : `${amount.toLocaleString()}원`;
         const formatAmount = (amount) => amount >= 10000 ? `${amount / 10000}만` : `${amount.toLocaleString()}원`;
         const escapeHtml = (text) => {
@@ -94,25 +144,18 @@
             return div.innerHTML;
         };
 
-        // 데이터 로드 및 뷰 업데이트
         async function updateView(year) {
             DOMElements.currentYear.textContent = year;
-            [members, matrix] = await Promise.all([
-                storage.getMembers(true),
-                storage.getPaymentMatrix(year)
-            ]);
+            matrixData = await storage.getPaymentMatrix(year);
             renderStatistics();
             renderPaymentMatrix();
         }
 
-        // 통계 렌더링
         function renderStatistics() {
             let totalPaid = 0, totalUnpaid = 0, totalAmount = 0;
-            matrix.forEach(row => {
+            matrixData.forEach(row => {
                 Object.values(row.months).forEach(p => {
-                    if (p) {
-                        p.paid ? (totalPaid++, totalAmount += p.amount) : totalUnpaid++;
-                    }
+                    if (p) p.paid ? (totalPaid++, totalAmount += p.amount) : totalUnpaid++;
                 });
             });
             const totalPayments = totalPaid + totalUnpaid;
@@ -123,71 +166,53 @@
             document.getElementById('totalAmount').textContent = formatCurrency(totalAmount);
         }
 
-        // 매트릭스 렌더링
         function renderPaymentMatrix() {
-            // ... (payment-status.html과 유사한 로직, 단 셀에 data 속성 추가)
-            const tableHtml = `...`; // 복잡한 HTML 생성 로직
-            DOMElements.paymentMatrix.innerHTML = tableHtml;
-        }
-
-        // 모달 핸들링
-        const closeModal = (modal) => modal.classList.remove('active');
-        const openModal = (modal) => modal.classList.add('active');
-
-        // 이벤트 핸들러
-        async function handleCellClick(memberId, month) {
-            const payment = matrix.find(r => r.member_id === memberId)?.months[month];
-            const member = members.find(m => m.id === memberId);
-            if (!member) return;
-
-            currentCellData = { memberId, month, paymentId: payment?.id, isPaid: payment?.paid, memberName: member.name, payment };
-
-            if (payment) {
-                // 옵션 모달 열기
-                // ...
-                openModal(DOMElements.optionsModal);
-            } else {
-                // 등록 모달 열기
-                // ...
-                openModal(DOMElements.paymentModal);
+            if (matrixData.length === 0) {
+                DOMElements.paymentMatrix.innerHTML = '<div style="text-align: center; padding: 40px; color: #999;">등록된 멤버가 없습니다.</div>';
+                return;
             }
+            const monthHeaders = Array.from({ length: 12 }, (_, i) => `<th>${i + 1}월</th>`).join('');
+            const memberRows = matrixData.map(row => {
+                let rowTotal = 0;
+                const monthCells = Array.from({ length: 12 }, (_, i) => {
+                    const month = i + 1;
+                    const payment = row.months[month];
+                    if (payment) {
+                        if (payment.paid) rowTotal += payment.amount;
+                        return `<td class="payment-cell ${payment.paid ? 'paid' : 'unpaid'}" data-member-id="${row.member_id}" data-month="${month}">${formatAmount(payment.amount)}</td>`;
+                    } else {
+                        return `<td class="payment-cell empty" data-member-id="${row.member_id}" data-month="${month}">등록</td>`;
+                    }
+                }).join('');
+                return `<tr><th>${escapeHtml(row.member_name)}</th>${monthCells}<td style="font-weight: bold; background: #e7f3ff;">${formatCurrency(rowTotal)}</td></tr>`;
+            }).join('');
+            DOMElements.paymentMatrix.innerHTML = `<table class="payment-table"><thead><tr><th>회원명</th>${monthHeaders}<th>합계</th></tr></thead><tbody>${memberRows}</tbody></table>`;
         }
 
-        async function savePayment() {
-            // ...
-            await storage.addPayment(...);
-            // or
-            await storage.updatePayment(...);
-            closeModal(DOMElements.paymentModal);
-            await updateView(currentYear);
+        function openCreateModal(member, month) {
+            DOMElements.modalTitle.textContent = '회비 등록';
+            DOMElements.modalMemberName.value = member.name;
+            DOMElements.modalMonth.value = `${currentYear}년 ${month}월`;
+            DOMElements.modalAmount.value = month === 1 ? 50000 : 35000;
+            DOMElements.modalNote.value = `${month}월 회비`;
+            DOMElements.paymentModal.classList.add('active');
         }
 
-        async function deletePayment() {
-            // ...
-            await storage.deletePayment(currentCellData.paymentId);
-            closeModal(DOMElements.optionsModal);
-            await updateView(currentYear);
+        function openOptionsModal(payment, member, month) {
+            DOMElements.optionsModalTitle.textContent = `${member.name} - ${month}월 회비`;
+            DOMElements.optionsModalInfo.innerHTML = `<strong>상태:</strong> ${payment.paid ? '납부 완료' : '미납'}<br><strong>금액:</strong> ${formatCurrency(payment.amount)}`;
+            DOMElements.optionToggleBtn.textContent = payment.paid ? '미납 처리' : '납부 처리';
+            DOMElements.optionToggleBtn.style.background = payment.paid ? '#dc3545' : '#28a745';
+            DOMElements.optionsModal.classList.add('active');
         }
 
-        async function togglePaymentStatus() {
-            // ...
-            await storage.updatePayment(currentCellData.paymentId, !currentCellData.isPaid);
-            closeModal(DOMElements.optionsModal);
-            await updateView(currentYear);
-        }
-
-        // 페이지 초기화
-        async function initialize() {
+        async function initializePage() {
             if (!await storage.isAdminLoggedIn()) {
                 alert('로그인이 필요합니다.');
                 return window.location.href = '/admin/login.html';
             }
-
             await updateView(currentYear);
 
-            // 이벤트 리스너 등록
-            document.getElementById('prevYearBtn').addEventListener('click', () => updateView(--currentYear));
-            document.getElementById('nextYearBtn').addEventListener('click', () => updateView(++currentYear));
             document.getElementById('logoutBtn').addEventListener('click', async (e) => {
                 e.preventDefault();
                 if (confirm('로그아웃하시겠습니까?')) {
@@ -196,23 +221,70 @@
                 }
             });
 
+            document.getElementById('prevYearBtn').addEventListener('click', () => updateView(--currentYear));
+            document.getElementById('nextYearBtn').addEventListener('click', () => updateView(++currentYear));
+
             DOMElements.paymentMatrix.addEventListener('click', (e) => {
                 const cell = e.target.closest('.payment-cell');
-                if (cell) {
-                    const memberId = parseInt(cell.dataset.memberId);
-                    const month = parseInt(cell.dataset.month);
-                    handleCellClick(memberId, month);
+                if (!cell) return;
+                const memberId = parseInt(cell.dataset.memberId);
+                const month = parseInt(cell.dataset.month);
+                const member = matrixData.find(r => r.member_id === memberId);
+                const payment = member?.months[month];
+                currentCellData = { memberId, month, payment, member };
+                payment ? openOptionsModal(payment, member, month) : openCreateModal(member, month);
+            });
+
+            const closeModal = (modal) => modal.classList.remove('active');
+            document.getElementById('modalCancelBtn').addEventListener('click', () => closeModal(DOMElements.paymentModal));
+            document.getElementById('optionCancelBtn').addEventListener('click', () => closeModal(DOMElements.optionsModal));
+
+            document.getElementById('modalSaveBtn').addEventListener('click', async () => {
+                const { memberId, month, payment } = currentCellData;
+                const amount = parseInt(DOMElements.modalAmount.value);
+                const note = DOMElements.modalNote.value.trim();
+                if (!amount || amount <= 0) return alert('금액을 올바르게 입력해주세요.');
+
+                if (payment) { // 수정
+                    await storage.updatePayment(payment.id, payment.paid, payment.payment_date, amount);
+                } else { // 생성
+                    await storage.addPayment(memberId, currentYear, month, amount, false, note);
+                }
+                closeModal(DOMElements.paymentModal);
+                await updateView(currentYear);
+            });
+
+            document.getElementById('optionToggleBtn').addEventListener('click', async () => {
+                const { payment } = currentCellData;
+                if (confirm(`${payment.paid ? '미납' : '납부'} 처리하시겠습니까?`)) {
+                    await storage.updatePayment(payment.id, !payment.paid);
+                    closeModal(DOMElements.optionsModal);
+                    await updateView(currentYear);
                 }
             });
-            
-            // 모달 버튼 이벤트 리스너들...
-            document.getElementById('modalSaveBtn').addEventListener('click', savePayment);
-            document.getElementById('optionDeleteBtn').addEventListener('click', deletePayment);
-            document.getElementById('optionToggleBtn').addEventListener('click', togglePaymentStatus);
-            // ... 기타 모달 버튼
+
+            document.getElementById('optionEditBtn').addEventListener('click', () => {
+                const { member, month, payment } = currentCellData;
+                closeModal(DOMElements.optionsModal);
+                DOMElements.modalTitle.textContent = '회비 수정';
+                DOMElements.modalMemberName.value = member.name;
+                DOMElements.modalMonth.value = `${currentYear}년 ${month}월`;
+                DOMElements.modalAmount.value = payment.amount;
+                DOMElements.modalNote.value = payment.note || '';
+                openModal(DOMElements.paymentModal);
+            });
+
+            document.getElementById('optionDeleteBtn').addEventListener('click', async () => {
+                const { payment } = currentCellData;
+                if (confirm('정말 이 회비 기록을 삭제하시겠습니까?')) {
+                    await storage.deletePayment(payment.id);
+                    closeModal(DOMElements.optionsModal);
+                    await updateView(currentYear);
+                }
+            });
         }
 
-        document.addEventListener('DOMContentLoaded', initialize);
+        document.addEventListener('DOMContentLoaded', initializePage);
     </script>
 </body>
 </html>
