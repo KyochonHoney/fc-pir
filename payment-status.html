@@ -192,9 +192,9 @@
 
         <!-- 연도 선택 -->
         <div class="year-selector">
-            <button onclick="changeYear(-1)">◀ 이전</button>
+            <button id="prevYearBtn">◀ 이전</button>
             <span id="currentYear">2025</span>
-            <button onclick="changeYear(1)">다음 ▶</button>
+            <button id="nextYearBtn">다음 ▶</button>
         </div>
 
         <div class="card">
@@ -210,29 +210,25 @@
 
     <script type="module">
         import storage from '/js/storage-firebase.js';
-        window.storage = storage;
 
         let currentYear = new Date().getFullYear();
 
-        // 연도 변경
-        function changeYear(delta) {
-            currentYear += delta;
-            document.getElementById('currentYear').textContent = currentYear;
-            loadPaymentMatrix();
-            loadStatistics();
+        // 연도 변경 및 데이터 로드
+        async function updateView(year) {
+            document.getElementById('currentYear').textContent = year;
+            await Promise.all([
+                loadStatistics(year),
+                loadPaymentMatrix(year)
+            ]);
         }
 
         // 통계 로드
-        async function loadStatistics() {
-            const matrix = await storage.getPaymentMatrix(currentYear);
-
-            let totalPaid = 0;
-            let totalUnpaid = 0;
-            let totalAmount = 0;
+        async function loadStatistics(year) {
+            const matrix = await storage.getPaymentMatrix(year);
+            let totalPaid = 0, totalUnpaid = 0, totalAmount = 0;
 
             matrix.forEach(row => {
-                for (let month = 1; month <= 12; month++) {
-                    const payment = row.months[month];
+                Object.values(row.months).forEach(payment => {
                     if (payment) {
                         if (payment.paid) {
                             totalPaid++;
@@ -241,21 +237,21 @@
                             totalUnpaid++;
                         }
                     }
-                }
+                });
             });
 
             const totalPayments = totalPaid + totalUnpaid;
             const paymentRate = totalPayments > 0 ? Math.round((totalPaid / totalPayments) * 100) : 0;
 
-            document.getElementById('paymentRate').textContent = paymentRate + '%';
-            document.getElementById('paidCount').textContent = totalPaid + '건';
-            document.getElementById('unpaidCount').textContent = totalUnpaid + '건';
+            document.getElementById('paymentRate').textContent = `${paymentRate}%`;
+            document.getElementById('paidCount').textContent = `${totalPaid}건`;
+            document.getElementById('unpaidCount').textContent = `${totalUnpaid}건`;
             document.getElementById('totalAmount').textContent = formatCurrency(totalAmount);
         }
 
         // 회비 매트릭스 로드
-        async function loadPaymentMatrix() {
-            const matrix = await storage.getPaymentMatrix(currentYear);
+        async function loadPaymentMatrix(year) {
+            const matrix = await storage.getPaymentMatrix(year);
             const container = document.getElementById('paymentMatrix');
 
             if (matrix.length === 0) {
@@ -263,112 +259,66 @@
                 return;
             }
 
-            let html = `
-                <table class="payment-table">
-                    <thead>
-                        <tr>
-                            <th style="min-width: 120px;">회원명</th>
-            `;
-
-            // 월 헤더
-            for (let month = 1; month <= 12; month++) {
-                html += `<th>${month}월</th>`;
-            }
-
-            html += `
-                            <th>합계</th>
-                        </tr>
-                    </thead>
-                    <tbody>
-            `;
-
-            // 회원별 행
-            matrix.forEach(row => {
-                html += `<tr>`;
-                html += `<th>${escapeHtml(row.member_name)}</th>`;
-
+            const monthHeaders = Array.from({ length: 12 }, (_, i) => `<th>${i + 1}월</th>`).join('');
+            const memberRows = matrix.map(row => {
                 let rowTotal = 0;
-
-                // 월별 데이터
-                for (let month = 1; month <= 12; month++) {
-                    const payment = row.months[month];
-
+                const monthCells = Array.from({ length: 12 }, (_, i) => {
+                    const payment = row.months[i + 1];
                     if (payment) {
-                        const cellClass = payment.paid ? 'paid' : 'unpaid';
-                        const amount = formatAmount(payment.amount);
-                        html += `<td class="payment-cell ${cellClass}">${amount}</td>`;
-
-                        if (payment.paid) {
-                            rowTotal += payment.amount;
-                        }
+                        if (payment.paid) rowTotal += payment.amount;
+                        return `<td class="payment-cell ${payment.paid ? 'paid' : 'unpaid'}">${formatAmount(payment.amount)}</td>`;
                     } else {
-                        html += `<td class="payment-cell empty">-</td>`;
+                        return `<td class="payment-cell empty">-</td>`;
                     }
-                }
-
-                // 합계 열
-                html += `<td style="font-weight: bold; background: #e7f3ff;">${formatCurrency(rowTotal)}</td>`;
-                html += `</tr>`;
-            });
-
-            // 통계 행 (월별 합계)
-            html += `<tr class="stats-row">`;
-            html += `<th>월별 합계</th>`;
+                }).join('');
+                return `<tr><th>${escapeHtml(row.member_name)}</th>${monthCells}<td style="font-weight: bold; background: #e7f3ff;">${formatCurrency(rowTotal)}</td></tr>`;
+            }).join('');
 
             let yearTotal = 0;
-
-            for (let month = 1; month <= 12; month++) {
+            const totalRowCells = Array.from({ length: 12 }, (_, i) => {
                 let monthTotal = 0;
-
                 matrix.forEach(row => {
-                    const payment = row.months[month];
-                    if (payment && payment.paid) {
-                        monthTotal += payment.amount;
-                    }
+                    const payment = row.months[i + 1];
+                    if (payment && payment.paid) monthTotal += payment.amount;
                 });
-
                 yearTotal += monthTotal;
-                html += `<td style="font-weight: bold;">${formatCurrency(monthTotal)}</td>`;
-            }
+                return `<td style="font-weight: bold;">${formatCurrency(monthTotal)}</td>`;
+            }).join('');
 
-            html += `<td style="font-weight: bold; font-size: 1.1rem;">${formatCurrency(yearTotal)}</td>`;
-            html += `</tr>`;
-
-            html += `
+            container.innerHTML = `
+                <table class="payment-table">
+                    <thead><tr><th style="min-width: 120px;">회원명</th>${monthHeaders}<th>합계</th></tr></thead>
+                    <tbody>
+                        ${memberRows}
+                        <tr class="stats-row"><th>월별 합계</th>${totalRowCells}<td style="font-weight: bold; font-size: 1.1rem;">${formatCurrency(yearTotal)}</td></tr>
                     </tbody>
                 </table>
             `;
-
-            container.innerHTML = html;
         }
 
-        // 금액 포맷 (간단)
-        function formatAmount(amount) {
-            if (amount >= 10000) {
-                return (amount / 10000) + '만';
-            }
-            return amount.toLocaleString() + '원';
-        }
-
-        // 금액 포맷 (전체)
-        function formatCurrency(amount) {
-            if (amount === 0) return '0원';
-            return amount.toLocaleString() + '원';
-        }
-
-        // HTML 이스케이프
-        function escapeHtml(text) {
+        // 헬퍼 함수
+        const formatAmount = (amount) => amount >= 10000 ? `${amount / 10000}만` : `${amount.toLocaleString()}원`;
+        const formatCurrency = (amount) => amount === 0 ? '0원' : `${amount.toLocaleString()}원`;
+        const escapeHtml = (text) => {
             if (!text) return '';
             const div = document.createElement('div');
             div.textContent = text;
             return div.innerHTML;
-        }
+        };
 
-        // 페이지 로드 시 실행
-        document.addEventListener('DOMContentLoaded', function() {
-            document.getElementById('currentYear').textContent = currentYear;
-            loadStatistics();
-            loadPaymentMatrix();
+        // 페이지 로드 및 이벤트 리스너 설정
+        document.addEventListener('DOMContentLoaded', () => {
+            updateView(currentYear);
+
+            document.getElementById('prevYearBtn').addEventListener('click', () => {
+                currentYear--;
+                updateView(currentYear);
+            });
+
+            document.getElementById('nextYearBtn').addEventListener('click', () => {
+                currentYear++;
+                updateView(currentYear);
+            });
         });
     </script>
 </body>

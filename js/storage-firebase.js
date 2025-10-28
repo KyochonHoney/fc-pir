@@ -287,11 +287,11 @@ class Storage {
 
         const paidCount = payments.filter(p => p.paid).length;
         const unpaidCount = payments.filter(p => !p.paid).length;
-        const totalMembers = members.length;
-        const paymentRate = totalMembers > 0 ? Math.round((paidCount / totalMembers) * 100) : 0;
+        const totalPayments = payments.length;
+        const paymentRate = totalPayments > 0 ? Math.round((paidCount / totalPayments) * 100) : 0;
 
         return {
-            total_members: totalMembers,
+            total_members: members.length,
             paid_count: paidCount,
             unpaid_count: unpaidCount,
             payment_rate: paymentRate

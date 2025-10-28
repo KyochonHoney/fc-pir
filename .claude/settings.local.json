@@ -8,7 +8,14 @@
       "Read(//c/**)",
       "Bash(git add:*)",
       "Bash(start http://localhost/football/admin/payments.html)",
-      "Bash(find:*)"
+      "Bash(find:*)",
+      "Bash(node add-data-direct.js:*)",
+      "Bash(git commit:*)",
+      "Bash(git push:*)",
+      "Bash(for file in \"admin/gallery.html\" \"index.html\" \"team-generator.html\" \"gallery.html\" \"payment-status.html\")",
+      "Bash(do echo \"=== $file ===\")",
+      "Bash(done)",
+      "Bash(node convert-to-firebase.js:*)"
     ],
     "deny": [],
     "ask": []
