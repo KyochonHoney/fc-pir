@@ -15,7 +15,10 @@
       "Bash(for file in \"admin/gallery.html\" \"index.html\" \"team-generator.html\" \"gallery.html\" \"payment-status.html\")",
       "Bash(do echo \"=== $file ===\")",
       "Bash(done)",
-      "Bash(node convert-to-firebase.js:*)"
+      "Bash(node convert-to-firebase.js:*)",
+      "mcp__sequential-thinking__sequentialthinking",
+      "Bash(test:*)",
+      "Bash(cat:*)"
     ],
     "deny": [],
     "ask": []
