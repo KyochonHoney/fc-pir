@@ -23,8 +23,15 @@ class TeamBalancer {
             teamCount = 2; // 기본값
         }
 
-        // 멤버 완전 랜덤 셔플
-        const shuffled = this.shuffleArray([...members]);
+        // 벤치 선수 처리: 인원이 팀 수로 나누어떨어지지 않으면 중간 레벨 선수를 벤치로
+        const { playingMembers, benchMembers } = this.separateBenchPlayers(members, teamCount);
+
+        if (playingMembers.length < 2) {
+            return {
+                success: false,
+                message: '경기 가능한 멤버가 부족합니다.'
+            };
+        }
 
         // 최적 밸런스 찾기 (여러 번 시도)
         let bestResult = null;
@@ -33,7 +40,7 @@ class TeamBalancer {
 
         for (let attempt = 0; attempt < attempts; attempt++) {
             // 매번 새로 랜덤 셔플
-            const randomMembers = this.shuffleArray([...members]);
+            const randomMembers = this.shuffleArray([...playingMembers]);
 
             // 팀 분배
             const teams = this.distributeTeams(randomMembers, teamCount);
@@ -48,8 +55,40 @@ class TeamBalancer {
             }
         }
 
-        // 결과 포맷팅
-        return this.formatResult(bestResult, teamCount);
+        // 결과 포맷팅 (벤치 정보 포함)
+        return this.formatResult(bestResult, teamCount, benchMembers);
+    }
+
+    /**
+     * 벤치 선수 분리
+     * 인원이 팀 수로 나누어떨어지지 않으면, 중간 레벨 선수를 벤치로 이동
+     * 예: 17명, 3팀 → 5:5:5 (15명) + 벤치 2명
+     */
+    static separateBenchPlayers(members, teamCount) {
+        const totalMembers = members.length;
+        const playersPerTeam = Math.floor(totalMembers / teamCount);
+        const playingCount = playersPerTeam * teamCount;
+        const benchCount = totalMembers - playingCount;
+
+        if (benchCount === 0) {
+            // 나누어떨어지면 벤치 없음
+            return { playingMembers: members, benchMembers: [] };
+        }
+
+        // 레벨 기준으로 정렬 (오름차순)
+        const sortedMembers = [...members].sort((a, b) => a.level - b.level);
+
+        // 중간 레벨 선수들을 벤치로 (너무 잘하거나 못하는 선수는 경기에 참여)
+        const middleIndex = Math.floor(sortedMembers.length / 2);
+        const benchStartIndex = middleIndex - Math.floor(benchCount / 2);
+
+        const benchMembers = sortedMembers.slice(benchStartIndex, benchStartIndex + benchCount);
+        const playingMembers = [
+            ...sortedMembers.slice(0, benchStartIndex),
+            ...sortedMembers.slice(benchStartIndex + benchCount)
+        ];
+
+        return { playingMembers, benchMembers };
     }
 
     /**
@@ -121,11 +160,12 @@ class TeamBalancer {
     /**
      * 결과 포맷팅
      */
-    static formatResult(teams, teamCount) {
+    static formatResult(teams, teamCount, benchMembers = []) {
         const result = {
             success: true,
             team_count: teamCount,
-            teams: []
+            teams: [],
+            bench: benchMembers // 벤치 멤버 추가
         };
 
         const teamNames = ['A팀', 'B팀', 'C팀'];

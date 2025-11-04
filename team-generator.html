@@ -306,6 +306,32 @@
                 </div>
             `).join('');
 
+            // 벤치 멤버 표시
+            let benchHtml = '';
+            if (result.bench && result.bench.length > 0) {
+                benchHtml = `
+                    <div style="margin-top: 30px; padding: 20px; background: #f8f9fa; border-radius: 8px; border: 2px dashed #6c757d;">
+                        <h4 style="color: #6c757d; margin-bottom: 15px;">
+                            🪑 벤치 (${result.bench.length}명)
+                        </h4>
+                        <p style="color: #666; font-size: 0.9rem; margin-bottom: 15px;">
+                            인원수를 맞추기 위해 중간 레벨 선수가 벤치에 배치되었습니다.
+                            경기 중 교체하거나 다음 게임에 우선 투입하세요.
+                        </p>
+                        <div style="display: flex; flex-wrap: wrap; gap: 10px;">
+                            ${result.bench.map(m => `
+                                <div style="padding: 10px 15px; background: white; border: 1px solid #ddd; border-radius: 6px; display: inline-flex; align-items: center; gap: 8px;">
+                                    ${m.is_mercenary ? '🆕 ' : ''}<strong>${escapeHtml(m.name)}</strong>
+                                    <span class="badge badge-info">${getPositionName(m.position)}</span>
+                                    <span class="badge badge-warning">Lv.${m.level}</span>
+                                    ${m.is_mercenary ? '<span class="badge" style="background: #ff9800; color: white;">용병</span>' : ''}
+                                </div>
+                            `).join('')}
+                        </div>
+                    </div>
+                `;
+            }
+
             const html = `
                 <div style="margin-bottom: 30px;">
                     <h4 style="color: ${qualityColor};">
@@ -315,6 +341,7 @@
                 <div style="display: grid; grid-template-columns: ${gridColumns}; gap: 20px;">
                     ${teamCards}
                 </div>
+                ${benchHtml}
             `;
             document.getElementById('teamResult').innerHTML = html;
         }
